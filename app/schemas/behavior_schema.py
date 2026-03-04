@@ -25,7 +25,9 @@ class MovementMetrics(BaseModel):
     max_speed_rel: float
     min_speed_rel: float
 
-    mean_acceleration_rel: float  # acceleration normalized by viewport diagonal and deltaT^2
+    mean_acceleration_rel: (
+        float  # acceleration normalized by viewport diagonal and deltaT^2
+    )
     std_acceleration_rel: float
     max_acceleration_rel: float
 
@@ -75,7 +77,7 @@ class ScrollMetrics(BaseModel):
     continuous_scroll_sequences: int
     mean_scroll_interval_sec: float
 
-    scroll_depth_max: float = 0.0   # max scroll position reached (0.0 - 1.0)
+    scroll_depth_max: float = 0.0  # max scroll position reached (0.0 - 1.0)
 
 
 class HeuristicMetrics(BaseModel):
@@ -114,7 +116,7 @@ class MouseBehaviorBatch(BaseModel):
     # Metadata
     session_id: str
     page: str
-    batch_t: float                  # ms since session start
+    batch_t: float  # ms since session start
 
     # Sub-modules
     movement: MovementMetrics
