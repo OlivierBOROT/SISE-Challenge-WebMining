@@ -90,6 +90,12 @@ body {
   padding: 15px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   text-align: center;
+  transition: transform .125s ease;
+  cursor: pointer;
+}
+
+article:hover {
+    transform: translateY(-5px);
 }
 
 .product-card img {
@@ -119,6 +125,20 @@ body {
 
 .product-card button:hover {
   background: #f7ca00;
+}
+
+.product-card .description {
+  .long {
+    display: none;
+  }
+}
+.product-card.active .description {
+  .long {
+    display: block;
+  }
+  .short {
+    display: none;
+  }
 }
 
 .pagination {
