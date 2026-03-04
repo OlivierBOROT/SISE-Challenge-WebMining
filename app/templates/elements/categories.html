@@ -1,0 +1,9 @@
+<nav class="sidebar">
+    <h2>Catégories</h2>
+    <ul>
+        <li class="active" data-id="all">Toutes</li>
+        {% for category in categories %}
+            <li data-id="{{ category }}">{{ category }}</li>
+        {% endfor %}
+    </ul>
+</nav>
