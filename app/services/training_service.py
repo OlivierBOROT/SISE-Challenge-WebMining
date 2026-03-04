@@ -365,7 +365,7 @@ if __name__ == "__main__":
         MouseBehaviorBatch, MovementMetrics, ClickMetrics,
         ScrollMetrics, HeuristicMetrics, FormMetrics, NavigationMetrics,
     )
-    from app.services.feature_service import extract, make_batch  # type: ignore[attr-defined]
+    from app.services.feature_service import extract  # type: ignore[attr-defined]
 
     # --- swap config here to test a different model ---
     config = ModelConfig(AnomalyModel.ISOLATION_FOREST)
@@ -448,7 +448,6 @@ if __name__ == "__main__":
                 session_duration_sec=1.2 if is_bot else 42.0,
             ),
         )
-        from app.services.feature_service import extract
         return extract(batch)
 
     print()

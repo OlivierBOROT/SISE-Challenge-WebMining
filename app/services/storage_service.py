@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
@@ -46,14 +47,13 @@ class StorageService:
         Initialize storage service.
 
         Args:
-            data_dir: Base data directory. Defaults to project root/data
+            data_dir: Base data directory. Defaults to DATA_PATH env var or 'data'
             jsonl_path: Path to JSONL store. Defaults to data_dir/features.jsonl
             parquet_path: Path to Parquet snapshot. Defaults to data_dir/features.parquet
         """
         if data_dir is None:
-            self.data_dir = Path(__file__).parent.parent.parent / "data"
-        else:
-            self.data_dir = Path(data_dir)
+            data_dir = os.getenv("DATA_PATH", "data")
+        self.data_dir = Path(data_dir)
 
         if jsonl_path is None:
             self.jsonl_path = self.data_dir / "features.jsonl"

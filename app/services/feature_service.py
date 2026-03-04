@@ -310,7 +310,7 @@ if __name__ == "__main__":
             print(f"  {col:<28} {fs.features[col]:>10.4f}")
 
         if triggered:
-            print(f"\n  ⚠️  Triggered rules:")
+            print("\n  ⚠️  Triggered rules:")
             for r in triggered:
                 print(f"     → {r}")
 
