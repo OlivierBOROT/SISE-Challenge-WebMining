@@ -88,8 +88,12 @@ class MouseTracker {
         this.scrolls = [];        // {dy, t}
         this._pendingDown = {};   // btn → timestamp
 
-        this.sessionStart = Date.now();           // timestamp absolu (ms)
-        this.captureStart = performance.now();    // pour durées relatives
+        // sessionStart: timestamp absolu (ms) du chargement de la page (global)
+        if (!window._globalSessionStart) {
+            window._globalSessionStart = Date.now();
+        }
+        this.sessionStart = window._globalSessionStart;
+        this.captureStart = performance.now();    // pour durées relatives (batch)
 
         this._onMove  = this._handleMove.bind(this);
         this._onDown  = this._handleDown.bind(this);
@@ -138,14 +142,14 @@ class MouseTracker {
         this.scrolls.push({ dy: e.deltaY, t: performance.now() });
     }
 
-    /** Réinitialise tous les buffers pour une nouvelle fenêtre de 5 s. */
+    /** Réinitialise tous les buffers pour une nouvelle fenêtre de collecte (batch), mais conserve le sessionStart global. */
     reset() {
         this.moves       = [];
         this.clicks      = [];
         this.clickHolds  = [];
         this.scrolls     = [];
         this._pendingDown = {};
-        this.sessionStart = Date.now();
+        // Ne pas toucher à this.sessionStart (global)
         this.captureStart = performance.now();
     }
 
@@ -161,8 +165,8 @@ class MouseTracker {
 
         const diag  = Math.hypot(window.innerWidth, window.innerHeight);
         const viewH = window.innerHeight;
-        const elapsed    = (Date.now() - this.sessionStart) / 1000;
-        const captureDur = (mv[n - 1].t - mv[0].t) / 1000;
+        // elapsed: temps écoulé depuis le début de la session globale (page load)
+        const elapsed = (Date.now() - this.sessionStart) / 1000;
 
         /* ───── Deltas inter-événements (secondes) & distances (px) ───── */
         const dts   = [];
@@ -364,7 +368,7 @@ class MouseTracker {
         return {
             session_start_ts:                this.sessionStart,
             elapsed_since_session_start_sec: elapsed,
-            capture_duration_sec:            captureDur,
+            total_events: n,
             movement,
             clicks,
             scroll,

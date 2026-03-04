@@ -89,11 +89,14 @@ class HeuristicMetrics(BaseModel):
 
 
 class MouseBehaviorFeatures(BaseModel):
-    """Computed features from a batch of mouse events, to be sent from the front-end for bot detection."""
+    """Computed features from a batch of mouse events, to be sent from the front-end for bot detection.
+    session_start_ts: timestamp (ms) when the page was loaded (global session start).
+    elapsed_since_session_start_sec: seconds since session_start_ts (global, not per-capture).
+    total_events: total number of events in this batch.
+    """
 
-    session_start_ts: int
-    elapsed_since_session_start_sec: float
-    capture_duration_sec: float
+    session_start_ts: int  # timestamp (ms) when the page was loaded
+    elapsed_since_session_start_sec: float  # seconds since session_start_ts
     total_events: int
 
     movement: MovementMetrics
