@@ -33,29 +33,3 @@ class BehaviorService:
         features = self.feature_builder.build(events, current_time=current_time)
         label = self.model_manager.predict(features)
         return {"label": label, "features": features}
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Module-level singleton for backward compatibility
-# ─────────────────────────────────────────────────────────────────────────────
-
-_default_service: BehaviorService | None = None
-
-
-def get_service(model_path: str = DEFAULT_MODEL_PATH) -> BehaviorService:
-    """Get or create the default behavior service singleton."""
-    global _default_service
-    if _default_service is None:
-        logger.debug("Initializing default BehaviorService instance")
-        _default_service = BehaviorService(model_path)
-    return _default_service
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Legacy module-level function for backward compatibility
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-def predict_from_raw(events: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Backward compatible function. Uses default service singleton."""
-    return get_service().predict_from_raw(events)

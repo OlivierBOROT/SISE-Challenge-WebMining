@@ -108,18 +108,3 @@ class ProductData:
         end = start + count
         return data[start:end], max_page
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Module-level singleton for backward compatibility
-# ─────────────────────────────────────────────────────────────────────────────
-
-_default_product_data: ProductData | None = None
-
-
-def get_product_data() -> ProductData:
-    """Get or create the default product data singleton."""
-    global _default_product_data
-    if _default_product_data is None:
-        logger.debug("Initializing default ProductData instance")
-        _default_product_data = ProductData()
-    return _default_product_data
