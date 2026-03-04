@@ -1,4 +1,4 @@
-from .mouse_behavior_schema import (
+from .behavior_schema import (
     MovementMetrics,
     ClickMetrics,
     ScrollMetrics,

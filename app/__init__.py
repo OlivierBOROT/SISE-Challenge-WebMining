@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 
 from flask import Flask
 
+from app.config import get_config
 from app.services.product_data import ProductData
 
 
@@ -18,9 +19,13 @@ class AppContext(Flask):
     product_data: ProductData
 
 
-def create_app() -> Flask:
+def create_app(config_name: str = None) -> Flask:
     """
     Create and configure the Flask application instance.
+
+    Args:
+        config_name: Environment config name (development, testing, production)
+                     Defaults to FLASK_ENV env var or 'development'
 
     Returns:
         Flask: Configured Flask application instance
@@ -28,6 +33,9 @@ def create_app() -> Flask:
     app = Flask(__name__)
 
     load_dotenv()
+    
+    # Load configuration
+    app.config.from_object(get_config(config_name))
 
     # Instantiate services in app context
     with app.app_context():
