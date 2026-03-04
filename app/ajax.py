@@ -10,6 +10,7 @@ from typing import cast
 from flask import Blueprint, current_app, jsonify, render_template, request
 
 from app import AppContext
+from app.schemas import MouseBehaviorBatch
 
 # Cast app_context typing
 app = cast(AppContext, current_app)
@@ -81,4 +82,9 @@ def track_inputs():
         }
     """
     stats = request.json
+    behaviour_batch = MouseBehaviorBatch(**stats)
+
+    feature_set = app.feature_service.extract(behaviour_batch)
+    app.storage_service.append(feature_set)
+    
     return jsonify({"success": True})

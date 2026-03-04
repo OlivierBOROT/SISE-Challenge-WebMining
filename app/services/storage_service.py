@@ -17,6 +17,7 @@ Each record includes metadata for versioning and future migration:
 
 from __future__ import annotations
 
+import os
 import json
 import logging
 import os
@@ -52,8 +53,9 @@ class StorageService:
             parquet_path: Path to Parquet snapshot. Defaults to data_dir/features.parquet
         """
         if data_dir is None:
-            data_dir = os.getenv("DATA_PATH", "data")
-        self.data_dir = Path(data_dir)
+            self.data_dir = Path(os.environ.get("DATA_PATH", "data"))
+        else:
+            self.data_dir = Path(data_dir)
 
         if jsonl_path is None:
             self.jsonl_path = self.data_dir / "features.jsonl"
@@ -82,6 +84,7 @@ class StorageService:
             schema_version: Storage schema version (for future migrations)
             feature_version: Feature extraction schema version
         """
+        # Validate stats data
         self.data_dir.mkdir(parents=True, exist_ok=True)
         row = asdict(feature_set)
         # Add versioning and metadata

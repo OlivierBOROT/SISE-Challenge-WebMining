@@ -16,8 +16,16 @@ logger = logging.getLogger(__name__)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Ordered feature vector — order must remain stable for the model
+# Output dataclass
 # ─────────────────────────────────────────────────────────────────────────────
+
+@dataclass
+class FeatureSet:
+    session_id: str
+    page: str
+    batch_t: float
+    features: dict[str, float]      # named features
+    vector: list[float]             # ordered vector for the model
 
 FEATURE_COLUMNS = [
     # A — Mouse movement
@@ -58,36 +66,6 @@ FEATURE_COLUMNS = [
     "scroll_click_ratio",         # scroll / clicks           — headless → 0
 ]
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Output dataclass
-# ─────────────────────────────────────────────────────────────────────────────
-
-@dataclass
-class FeatureSet:
-    session_id: str
-    page: str
-    batch_t: float
-    features: dict[str, float]      # named features
-    vector: list[float]             # ordered vector for the model
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-def _safe(val: float) -> float:
-    """Replace NaN/inf with 0.0 to avoid crashing the model."""
-    if val is None or math.isnan(val) or math.isinf(val):
-        return 0.0
-    return round(float(val), 6)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Heuristic rules — immediate score without a trained model
-# ─────────────────────────────────────────────────────────────────────────────
-
 BOT_RULES = [
     # (feature, operator, threshold, weight, description)
     ("entropy_direction",      "<",  0.5,   3.0, "Linear trajectory — very low directional entropy"),
@@ -107,38 +85,30 @@ BOT_RULES = [
 
 
 class FeatureService:
-    """
-    Extracts normalized feature vectors from mouse behavior batches.
-    Provides both standard feature extraction and heuristic scoring.
-    """
 
-    def __init__(self):
-        """Initialize feature service."""
-        self.feature_columns = FEATURE_COLUMNS
-        self.bot_rules = BOT_RULES
+    def _safe(self, val: float) -> float:
+        """Replace NaN/inf with 0.0 to avoid crashing the model."""
+        if val is None or math.isnan(val) or math.isinf(val):
+            return 0.0
+        return round(float(val), 6)
 
     def extract(self, batch: MouseBehaviorBatch) -> FeatureSet:
         """
-        Extract features from a validated behavior batch.
-
-        Args:
-            batch: Validated MouseBehaviorBatch
-
-        Returns:
-            FeatureSet with named features and ordered vector
+        Main entry point.
+        Receives a validated batch and returns a FeatureSet with named features + ordered vector.
         """
-        m = batch.movement
+        m  = batch.movement
         cl = batch.clicks
         sc = batch.scroll
-        h = batch.heuristics
-        f = batch.form
-        n = batch.navigation
+        h  = batch.heuristics
+        f  = batch.form
+        n  = batch.navigation
 
         # --- A — Movement ---
         click_move_ratio = (
             cl.total_click_events / m.total_move_events
             if m.total_move_events > 0
-            else float(cl.total_click_events)  # clicks with no movement = strong bot signal
+            else float(cl.total_click_events)   # clicks with no movement = strong bot signal
         )
 
         scroll_click_ratio = (
@@ -149,37 +119,41 @@ class FeatureService:
 
         features = {
             # A — Movement
-            "entropy_direction": _safe(h.entropy_direction),
-            "entropy_speed": _safe(h.entropy_speed),
-            "speed_variance": _safe(m.std_speed_rel**2),
-            "max_speed": _safe(m.max_speed_rel),
-            "mean_acceleration": _safe(m.mean_acceleration_rel),
-            "path_efficiency": _safe(h.linear_movement_ratio),
-            "direction_changes": float(m.direction_changes_count),
-            "mean_turning_angle": _safe(m.mean_turning_angle_rad),
-            "std_turning_angle": _safe(m.std_turning_angle_rad),
-            "constant_speed_ratio": _safe(h.constant_speed_ratio),
-            "teleport_count": float(h.teleport_event_count),
+            "entropy_direction":       self._safe(h.entropy_direction),
+            "entropy_speed":           self._safe(h.entropy_speed),
+            "speed_variance":          self._safe(m.std_speed_rel ** 2),
+            "max_speed":               self._safe(m.max_speed_rel),
+            "mean_acceleration":       self._safe(m.mean_acceleration_rel),
+            "path_efficiency":         self._safe(h.linear_movement_ratio),
+            "direction_changes":       float(m.direction_changes_count),
+            "mean_turning_angle":      self._safe(m.mean_turning_angle_rad),
+            "std_turning_angle":       self._safe(m.std_turning_angle_rad),
+            "constant_speed_ratio":    self._safe(h.constant_speed_ratio),
+            "teleport_count":          float(h.teleport_event_count),
+
             # B — Clicks
-            "click_move_ratio": _safe(click_move_ratio),
-            "interclick_min": _safe(cl.min_click_interval_sec),
-            "interclick_std": _safe(cl.std_click_interval_sec),
-            "click_hold_mean": _safe(cl.mean_click_hold_sec),
-            "rapid_burst_count": float(cl.rapid_click_burst_count),
-            "identical_interval_ratio": _safe(cl.identical_interval_ratio),
+            "click_move_ratio":        self._safe(click_move_ratio),
+            "interclick_min":          self._safe(cl.min_click_interval_sec),
+            "interclick_std":          self._safe(cl.std_click_interval_sec),
+            "click_hold_mean":         self._safe(cl.mean_click_hold_sec),
+            "rapid_burst_count":       float(cl.rapid_click_burst_count),
+            "identical_interval_ratio": self._safe(cl.identical_interval_ratio),
+
             # C — Forms
-            "field_min_duration": _safe(f.field_min_duration_sec),
-            "field_avg_duration": _safe(f.field_avg_duration_sec),
-            "fields_filled": float(f.fields_filled),
+            "field_min_duration":      self._safe(f.field_min_duration_sec),
+            "field_avg_duration":      self._safe(f.field_avg_duration_sec),
+            "fields_filled":           float(f.fields_filled),
+
             # D — Scroll
-            "scroll_depth_max": _safe(sc.scroll_depth_max),
-            "scroll_event_rate": _safe(sc.scroll_event_rate_hz),
+            "scroll_depth_max":        self._safe(sc.scroll_depth_max),
+            "scroll_event_rate":       self._safe(sc.scroll_event_rate_hz),
             "scroll_direction_changes": float(sc.scroll_direction_changes),
+
             # E — Session
-            "session_duration": _safe(n.session_duration_sec),
-            "pages_visited": float(len(n.pages_visited)),
-            "revisit_rate": _safe(n.revisit_rate),
-            "scroll_click_ratio": _safe(scroll_click_ratio),
+            "session_duration":        self._safe(n.session_duration_sec),
+            "pages_visited":           float(len(n.pages_visited)),
+            "revisit_rate":            self._safe(n.revisit_rate),
+            "scroll_click_ratio":      self._safe(scroll_click_ratio),
         }
 
         vector = [features[col] for col in FEATURE_COLUMNS]
@@ -193,78 +167,25 @@ class FeatureService:
         )
 
     def to_numpy(self, feature_set: FeatureSet) -> np.ndarray:
-        """
-        Convert feature set to 2D numpy array for scikit-learn.
-
-        Args:
-            feature_set: FeatureSet to convert
-
-        Returns:
-            np.ndarray: Shape (1, N_FEATURES)
-        """
+        """Return the feature vector as a 2D numpy array for scikit-learn."""
         return np.array(feature_set.vector, dtype=float).reshape(1, -1)
 
-    def heuristic_score(
-        self, feature_set: FeatureSet
-    ) -> tuple[float, list[str]]:
+    def heuristic_score(self, feature_set: FeatureSet) -> tuple[float, list[str]]:
         """
-        Rule-based bot score without a trained model.
-
-        Args:
-            feature_set: FeatureSet to score
-
-        Returns:
-            tuple: (score 0.0–1.0, list of triggered rules)
+        Rule-based score — works without a trained model.
+        Returns (score 0.0–1.0, list of triggered rules).
         """
         f = feature_set.features
         triggered = []
         weighted_sum = 0.0
-        total_weight = sum(r[3] for r in self.bot_rules)
+        total_weight = sum(r[3] for r in BOT_RULES)
 
-        for col, op, threshold, weight, reason in self.bot_rules:
+        for col, op, threshold, weight, reason in BOT_RULES:
             val = f.get(col, 0.0)
-            hit = (op == "<" and val < threshold) or (
-                op == ">" and val > threshold
-            )
+            hit = (op == "<" and val < threshold) or (op == ">" and val > threshold)
             if hit:
                 weighted_sum += weight
                 triggered.append(f"[{col} {op} {threshold}] {reason}")
 
         score = weighted_sum / total_weight
         return round(min(1.0, score), 4), triggered
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Module-level singleton for backward compatibility
-# ─────────────────────────────────────────────────────────────────────────────
-
-_default_service: FeatureService | None = None
-
-
-def get_service() -> FeatureService:
-    """Get or create the default feature service singleton."""
-    global _default_service
-    if _default_service is None:
-        logger.debug("Initializing default FeatureService instance")
-        _default_service = FeatureService()
-    return _default_service
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Legacy module-level functions for backward compatibility
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-def extract(batch: MouseBehaviorBatch) -> FeatureSet:
-    """Backward compatible extract function. Uses default service singleton."""
-    return get_service().extract(batch)
-
-
-def to_numpy(feature_set: FeatureSet) -> np.ndarray:
-    """Backward compatible to_numpy function. Uses default service singleton."""
-    return get_service().to_numpy(feature_set)
-
-
-def heuristic_score(feature_set: FeatureSet) -> tuple[float, list[str]]:
-    """Backward compatible heuristic_score function. Uses default service singleton."""
-    return get_service().heuristic_score(feature_set)
