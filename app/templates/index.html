@@ -4,11 +4,303 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title></title>
+    <title>ShopTrack – E-Commerce + Mouse Analytics</title>
+    <style>
+        /* ───────── Reset & variables ───────── */
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        :root{
+            --bg:#f4f4f7; --card:#fff; --accent:#6c5ce7; --accent2:#a29bfe;
+            --text:#2d3436; --muted:#636e72; --border:#dfe6e9;
+            --panel-w:340px; --radius:12px;
+        }
+        body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+
+        /* ───────── Left: e-commerce area ───────── */
+        .shop{flex:1;padding:24px 32px;overflow-y:auto;max-height:100vh}
+        .shop-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+        .shop-header h1{font-size:1.6rem;color:var(--accent)}
+        .shop-header .cart-btn{background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:var(--radius);cursor:pointer;font-size:.95rem;transition:background .2s}
+        .shop-header .cart-btn:hover{background:var(--accent2)}
+        .categories{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap}
+        .categories button{padding:8px 18px;border:1px solid var(--border);background:var(--card);border-radius:20px;cursor:pointer;font-size:.85rem;transition:all .2s}
+        .categories button.active,.categories button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+        .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px}
+        .product{background:var(--card);border-radius:var(--radius);overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);transition:transform .2s,box-shadow .2s;cursor:pointer}
+        .product:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(0,0,0,.1)}
+        .product .img{height:180px;background:linear-gradient(135deg,var(--accent2),var(--accent));display:flex;align-items:center;justify-content:center;font-size:3rem;color:#fff}
+        .product .info{padding:14px}
+        .product .info h3{font-size:.95rem;margin-bottom:6px}
+        .product .info .price{font-weight:700;color:var(--accent);font-size:1.05rem}
+        .product .info .old-price{text-decoration:line-through;color:var(--muted);font-size:.85rem;margin-left:6px}
+        .product .info .rating{color:#fdcb6e;font-size:.85rem;margin-top:4px}
+        .product .add-btn{width:100%;padding:10px;background:var(--accent);color:#fff;border:none;font-size:.9rem;cursor:pointer;transition:background .2s}
+        .product .add-btn:hover{background:var(--accent2)}
+        .banner{background:linear-gradient(135deg,var(--accent),#fd79a8);border-radius:var(--radius);padding:32px;color:#fff;margin-bottom:24px;position:relative;overflow:hidden}
+        .banner h2{font-size:1.4rem;margin-bottom:8px}
+        .banner p{opacity:.9;font-size:.95rem}
+        .banner .circle{position:absolute;width:200px;height:200px;background:rgba(255,255,255,.08);border-radius:50%;right:-40px;top:-40px}
+
+        /* ───────── Right: stats panel ───────── */
+        .stats-panel{width:var(--panel-w);min-width:var(--panel-w);background:var(--card);border-left:1px solid var(--border);padding:20px;overflow-y:auto;max-height:100vh;font-size:.82rem}
+        .stats-panel h2{font-size:1.05rem;margin-bottom:14px;color:var(--accent);display:flex;align-items:center;gap:6px}
+        .stats-panel h2::before{content:'📊'}
+        .stat-section{margin-bottom:16px;padding:10px 12px;background:var(--bg);border-radius:var(--radius)}
+        .stat-section h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px}
+        .stat-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)}
+        .stat-row:last-child{border:none}
+        .stat-row .label{color:var(--muted)}
+        .stat-row .value{font-weight:600;font-variant-numeric:tabular-nums;min-width:80px;text-align:right}
+        .mini-canvas{width:100%;height:120px;border-radius:8px;background:#1e1e2e;margin-top:8px}
+        .heatmap-canvas{width:100%;height:160px;border-radius:8px;background:#1e1e2e;margin-top:8px}
+
+        /* ───────── Bot detection badge ───────── */
+        .bot-section{position:relative}
+        .bot-badge{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:var(--radius);font-weight:700;font-size:.95rem;transition:background .4s,color .4s}
+        .bot-badge.human{background:linear-gradient(135deg,#00b894,#00cec9);color:#fff}
+        .bot-badge.bot{background:linear-gradient(135deg,#d63031,#e17055);color:#fff}
+        .bot-badge.unknown{background:var(--border);color:var(--muted)}
+        .bot-badge .icon{font-size:1.4rem}
+        .bot-badge .info{display:flex;flex-direction:column}
+        .bot-badge .info .main-label{font-size:.95rem}
+        .bot-badge .info .sub-label{font-size:.72rem;font-weight:400;opacity:.85}
+        .confidence-bar{height:6px;border-radius:3px;background:rgba(0,0,0,.15);margin-top:8px;overflow:hidden}
+        .confidence-bar .fill{height:100%;border-radius:3px;transition:width .6s ease}
+
+        /* ───────── Scrollbar ───────── */
+        ::-webkit-scrollbar{width:6px}
+        ::-webkit-scrollbar-thumb{background:var(--accent2);border-radius:3px}
+
+        /* ───────── Responsive ───────── */
+        @media(max-width:900px){
+            body{flex-direction:column}
+            .stats-panel{width:100%;min-width:100%;max-height:50vh;border-left:none;border-top:1px solid var(--border)}
+        }
+    </style>
 </head>
 
 <body>
-    
-</body>
 
+<!-- ═══════════ E-COMMERCE AREA ═══════════ -->
+<main class="shop" id="shopArea">
+    <div class="shop-header">
+        <h1>🛍️ ShopTrack</h1>
+        <button class="cart-btn" id="cartBtn">🛒 Panier (<span id="cartCount">0</span>)</button>
+    </div>
+
+    <div class="banner">
+        <div class="circle"></div>
+        <h2>Soldes d'hiver – jusqu'à -50 %</h2>
+        <p>Offres limitées sur toute la collection tech &amp; lifestyle.</p>
+    </div>
+
+    <div class="categories">
+        <button class="active">Tout</button>
+        <button>Électronique</button>
+        <button>Mode</button>
+        <button>Maison</button>
+        <button>Sport</button>
+        <button>Livres</button>
+    </div>
+
+    <div class="grid" id="productGrid"></div>
+</main>
+
+<!-- ═══════════ STATS PANEL ═══════════ -->
+<aside class="stats-panel" id="statsPanel">
+    <h2>Mouse Analytics</h2>
+
+    <!-- Bot detection -->
+    <div class="stat-section bot-section">
+        <h3>🤖 Détection Bot (Isolation Forest)</h3>
+        <div class="bot-badge unknown" id="botBadge">
+            <span class="icon">❓</span>
+            <span class="info">
+                <span class="main-label" id="botLabel">En attente…</span>
+                <span class="sub-label" id="botSub">Collecte des données souris</span>
+            </span>
+        </div>
+        <div class="confidence-bar"><div class="fill" id="botConfBar" style="width:0;background:#636e72"></div></div>
+        <div style="margin-top:8px">
+            <div class="stat-row"><span class="label">Score IF</span><span class="value" id="sIFScore">–</span></div>
+            <div class="stat-row"><span class="label">Confiance</span><span class="value" id="sIFConf">–</span></div>
+            <div class="stat-row"><span class="label">Prédiction</span><span class="value" id="sIFPred">–</span></div>
+        </div>
+    </div>
+
+    <!-- Position -->
+    <div class="stat-section">
+        <h3>Position</h3>
+        <div class="stat-row"><span class="label">X</span><span class="value" id="sX">–</span></div>
+        <div class="stat-row"><span class="label">Y</span><span class="value" id="sY">–</span></div>
+        <div class="stat-row"><span class="label">Dist. totale</span><span class="value" id="sDist">–</span></div>
+    </div>
+
+    <!-- Vitesse -->
+    <div class="stat-section">
+        <h3>Vitesse (px/s)</h3>
+        <div class="stat-row"><span class="label">Instantanée</span><span class="value" id="sSpd">–</span></div>
+        <div class="stat-row"><span class="label">Moyenne</span><span class="value" id="sSpdAvg">–</span></div>
+        <div class="stat-row"><span class="label">Max</span><span class="value" id="sSpdMax">–</span></div>
+        <div class="stat-row"><span class="label">Min</span><span class="value" id="sSpdMin">–</span></div>
+        <div class="stat-row"><span class="label">Médiane</span><span class="value" id="sSpdMed">–</span></div>
+        <div class="stat-row"><span class="label">Écart-type</span><span class="value" id="sSpdStd">–</span></div>
+    </div>
+
+    <!-- Accélération -->
+    <div class="stat-section">
+        <h3>Accélération (px/s²)</h3>
+        <div class="stat-row"><span class="label">Instantanée</span><span class="value" id="sAcc">–</span></div>
+        <div class="stat-row"><span class="label">Moyenne</span><span class="value" id="sAccAvg">–</span></div>
+        <div class="stat-row"><span class="label">Max</span><span class="value" id="sAccMax">–</span></div>
+        <div class="stat-row"><span class="label">Écart-type</span><span class="value" id="sAccStd">–</span></div>
+    </div>
+
+    <!-- Jerk & angular -->
+    <div class="stat-section">
+        <h3>Jerk &amp; vitesse angulaire</h3>
+        <div class="stat-row"><span class="label">Jerk moy. (px/s³)</span><span class="value" id="sJerkAvg">–</span></div>
+        <div class="stat-row"><span class="label">Jerk max</span><span class="value" id="sJerkMax">–</span></div>
+        <div class="stat-row"><span class="label">Vit. ang. moy. (°/s)</span><span class="value" id="sAngVel">–</span></div>
+        <div class="stat-row"><span class="label">Vit. ang. σ</span><span class="value" id="sAngVelStd">–</span></div>
+    </div>
+
+    <!-- Géométrie de trajectoire -->
+    <div class="stat-section">
+        <h3>Géométrie de trajectoire</h3>
+        <div class="stat-row"><span class="label">Courbure moy.</span><span class="value" id="sCurv">–</span></div>
+        <div class="stat-row"><span class="label">Courbure σ</span><span class="value" id="sCurvStd">–</span></div>
+        <div class="stat-row"><span class="label">Angle moyen (°)</span><span class="value" id="sAngle">–</span></div>
+        <div class="stat-row"><span class="label">Angle σ (°)</span><span class="value" id="sAngleStd">–</span></div>
+        <div class="stat-row"><span class="label">Nb changements dir.</span><span class="value" id="sDirChanges">–</span></div>
+        <div class="stat-row"><span class="label">Rectitude</span><span class="value" id="sStraight">–</span></div>
+        <div class="stat-row"><span class="label">Sinuosité</span><span class="value" id="sSinuosity">–</span></div>
+    </div>
+
+    <!-- Micro-jitter -->
+    <div class="stat-section">
+        <h3>Micro-jitter</h3>
+        <div class="stat-row"><span class="label">Jitter σ (px)</span><span class="value" id="sJitter">–</span></div>
+        <div class="stat-row"><span class="label">Jitter moy. (px)</span><span class="value" id="sJitterMean">–</span></div>
+        <div class="stat-row"><span class="label">Jitter fréq. (Hz)</span><span class="value" id="sJitterHz">–</span></div>
+        <div class="stat-row"><span class="label">Jitter score</span><span class="value" id="sJitterScore">–</span></div>
+    </div>
+
+    <!-- Timing regularity (bot) -->
+    <div class="stat-section">
+        <h3>⏱️ Régularité temporelle</h3>
+        <div class="stat-row"><span class="label">Δt moyen</span><span class="value" id="sDtMean">–</span></div>
+        <div class="stat-row"><span class="label">Δt écart-type</span><span class="value" id="sDtStd">–</span></div>
+        <div class="stat-row"><span class="label">Δt CV (bas=bot)</span><span class="value" id="sDtCv">–</span></div>
+        <div class="stat-row"><span class="label">Δt entropie</span><span class="value" id="sDtEntropy">–</span></div>
+        <div class="stat-row"><span class="label">Coords entières</span><span class="value" id="sIntCoord">–</span></div>
+        <div class="stat-row"><span class="label">movementX/Y dispo</span><span class="value" id="sMovRatio">–</span></div>
+    </div>
+
+    <!-- Clicks & pauses -->
+    <div class="stat-section">
+        <h3>Clics &amp; pauses</h3>
+        <div class="stat-row"><span class="label">Clics totaux</span><span class="value" id="sClicks">0</span></div>
+        <div class="stat-row"><span class="label">CPS (clics/s)</span><span class="value" id="sCPS">–</span></div>
+        <div class="stat-row"><span class="label">Click Δt CV</span><span class="value" id="sClickDtCv">–</span></div>
+        <div class="stat-row"><span class="label">Move→Click délai</span><span class="value" id="sMoveToClick">–</span></div>
+        <div class="stat-row"><span class="label">Temps immobile (s)</span><span class="value" id="sIdle">0.0</span></div>
+        <div class="stat-row"><span class="label">Nb pauses</span><span class="value" id="sPauses">0</span></div>
+    </div>
+
+    <!-- Scroll -->
+    <div class="stat-section">
+        <h3>Scroll</h3>
+        <div class="stat-row"><span class="label">Événements scroll</span><span class="value" id="sScrollCount">0</span></div>
+        <div class="stat-row"><span class="label">Scroll total (px)</span><span class="value" id="sScrollDy">0</span></div>
+        <div class="stat-row"><span class="label">Scroll Δt CV</span><span class="value" id="sScrollCv">–</span></div>
+    </div>
+
+    <!-- Activité -->
+    <div class="stat-section">
+        <h3>Activité</h3>
+        <div class="stat-row"><span class="label">Événements/s</span><span class="value" id="sEPS">–</span></div>
+        <div class="stat-row"><span class="label">Total événements</span><span class="value" id="sTotal">0</span></div>
+        <div class="stat-row"><span class="label">Temps session (s)</span><span class="value" id="sTime">0</span></div>
+        <div class="stat-row"><span class="label">Touches/s</span><span class="value" id="sKPS">–</span></div>
+        <div class="stat-row"><span class="label">1er mouvement</span><span class="value" id="sFirstMove">–</span></div>
+        <div class="stat-row"><span class="label">1er clic</span><span class="value" id="sFirstClick">–</span></div>
+    </div>
+
+    <!-- Mini trajectory canvas -->
+    <div class="stat-section">
+        <h3>Trajectoire (2 s)</h3>
+        <canvas class="mini-canvas" id="trajCanvas"></canvas>
+    </div>
+
+    <!-- Speed sparkline -->
+    <div class="stat-section">
+        <h3>Vitesse (sparkline)</h3>
+        <canvas class="mini-canvas" id="speedCanvas"></canvas>
+    </div>
+
+    <!-- Heatmap -->
+    <div class="stat-section">
+        <h3>Heatmap (clics)</h3>
+        <canvas class="heatmap-canvas" id="heatCanvas"></canvas>
+    </div>
+</aside>
+
+<script>
+/* ═══════════════════════════════════════════
+   PRODUCTS DATA (fake e-commerce catalogue)
+   ═══════════════════════════════════════════ */
+const PRODUCTS = [
+    {emoji:"💻", name:"MacBook Pro M4", price:2499, old:2999, rating:4.8, cat:"Électronique"},
+    {emoji:"📱", name:"iPhone 16 Pro", price:1199, old:1399, rating:4.7, cat:"Électronique"},
+    {emoji:"🎧", name:"AirPods Max", price:549, old:629, rating:4.5, cat:"Électronique"},
+    {emoji:"⌚", name:"Apple Watch Ultra", price:899, old:999, rating:4.6, cat:"Électronique"},
+    {emoji:"👟", name:"Nike Air Max 97", price:179, old:220, rating:4.4, cat:"Sport"},
+    {emoji:"👗", name:"Robe d'été Zara", price:49, old:79, rating:4.2, cat:"Mode"},
+    {emoji:"🧥", name:"Doudoune North Face", price:329, old:449, rating:4.6, cat:"Mode"},
+    {emoji:"🛋️", name:"Canapé modulaire", price:1299, old:1599, rating:4.3, cat:"Maison"},
+    {emoji:"🪴", name:"Monstera XL", price:59, old:79, rating:4.1, cat:"Maison"},
+    {emoji:"📚", name:"Clean Code", price:35, old:42, rating:4.9, cat:"Livres"},
+    {emoji:"🎮", name:"PS5 Slim", price:499, old:549, rating:4.8, cat:"Électronique"},
+    {emoji:"🏋️", name:"Kettlebell 16 kg", price:69, old:89, rating:4.3, cat:"Sport"},
+];
+
+const grid = document.getElementById("productGrid");
+let cartCount = 0;
+function renderProducts(filter){
+    grid.innerHTML = "";
+    const list = filter && filter !== "Tout" ? PRODUCTS.filter(p=>p.cat===filter) : PRODUCTS;
+    list.forEach(p=>{
+        const d = document.createElement("div");
+        d.className = "product";
+        d.innerHTML = `
+            <div class="img">${p.emoji}</div>
+            <div class="info">
+                <h3>${p.name}</h3>
+                <span class="price">${p.price} €</span><span class="old-price">${p.old} €</span>
+                <div class="rating">${"★".repeat(Math.round(p.rating))}${"☆".repeat(5-Math.round(p.rating))} ${p.rating}</div>
+            </div>
+            <button class="add-btn">Ajouter au panier</button>`;
+        d.querySelector(".add-btn").addEventListener("click", e=>{
+            e.stopPropagation();
+            cartCount++;
+            document.getElementById("cartCount").textContent = cartCount;
+        });
+        grid.appendChild(d);
+    });
+}
+renderProducts();
+document.querySelectorAll(".categories button").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+        document.querySelectorAll(".categories button").forEach(b=>b.classList.remove("active"));
+        btn.classList.add("active");
+        renderProducts(btn.textContent);
+    });
+});
+</script>
+
+<!-- Mouse tracking & stats -->
+<script src="{{ url_for('static', filename='js/mouseTracker.js') }}"></script>
+<script src="{{ url_for('static', filename='js/statsPanel.js') }}"></script>
+
+</body>
 </html>
