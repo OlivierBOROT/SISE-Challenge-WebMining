@@ -90,6 +90,7 @@ desktop.ini
 logs/
 docs/notes.md
 uv.lock
+BACKLOG.md
 
 scrapping.ipynb
 fix_json.ipynb
