@@ -1,9 +1,11 @@
 """
 Flask application factory and instance.
 
-The create_app() function initializes the Flask application.
-Configuration is loaded from environment variables via .env file.
+The create_app() function initializes the Flask application with proper
+logging configuration. The app instance at module level is for production
+WSGI servers (Gunicorn, Waitress, etc.).
 """
+import os
 from dotenv import load_dotenv
 
 from flask import Flask
@@ -19,8 +21,6 @@ class AppContext(Flask):
 def create_app() -> Flask:
     """
     Create and configure the Flask application instance.
-
-    Configuration is loaded from environment variables (.env file).
 
     Returns:
         Flask: Configured Flask application instance
