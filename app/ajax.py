@@ -4,7 +4,7 @@ AJAX endpoints
 Only design here function designed to be called from
 front end. No complex logic.
 """
-from flask import Blueprint, current_app, render_template, request
+from flask import Blueprint, render_template, jsonify, current_app, request
 
 from typing import cast
 
@@ -62,3 +62,13 @@ def render_products():
         page=page,
         max_page=max_page
     )
+
+
+
+# ------------- Tracking
+
+@ajax.route('/track_inputs', methods=['POST'])
+def track_inputs():
+    stats = request.json
+    print(stats)
+    return jsonify({"success": True})
