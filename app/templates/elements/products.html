@@ -2,10 +2,13 @@
 <div class="product-grid">
 {% for product in products %}
     <article class="product-card" data-id="{{ product.id }}">
-        <img src="{{ product.image_url }}" alt="product image">
+        <img src="{{ url_for('static', filename='images/products/' ~ product.id ~ '.jpg') }}" alt="product image">
         <h3>{{ product.title }}</h3>
-        <p>{{ product.description_short }}</p>
-        <p class="price">{{ product.price }}</p>
+        <div class="description">
+            <p class="short">{{ product.description_short }}</p>
+            <p class="long">{{ product.description_long }}</p>
+        </div>
+        <p class="price">{{ product.price }}€</p>
         <button>Acheter</button>
     </article>
 {% endfor %}
