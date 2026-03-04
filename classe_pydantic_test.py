@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel
 
 
@@ -82,6 +80,7 @@ class MouseBehaviorFeatures(BaseModel):
     session_start_ts: int
     elapsed_since_session_start_sec: float
     capture_duration_sec: float
+    total_events: int
 
     movement: MovementMetrics
     clicks: ClickMetrics

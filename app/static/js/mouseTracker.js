@@ -1,567 +1,374 @@
 /**
- * ╔══════════════════════════════════════════════════════════════════╗
- * ║  MouseTracker  –  Raw data collection & feature computation     ║
- * ║                                                                  ║
- * ║  Captures every signal useful for:                               ║
- * ║    • UX / behaviour analysis  (heatmaps, funnels, engagement)   ║
- * ║    • Bot detection            (timing regularity, jitter, etc.) ║
- * ╚══════════════════════════════════════════════════════════════════╝
+ * MouseTracker — Collecte d'événements souris & calcul des features.
  *
- *  Usage:
- *      const tracker = new MouseTracker();
- *      tracker.start();
- *      // … later …
- *      const features = tracker.computeFeatures();   // {speed_avg, …}
- *      const snapshot = tracker.getSnapshot();        // richer object for UI
+ * Produit un objet structuré identique au modèle Pydantic
+ * MouseBehaviorFeatures (session, movement, clicks, scroll, heuristics).
  */
 
 "use strict";
 
-/* ═══════════════════════════════════════════
-   §1  MATH HELPERS
-   ═══════════════════════════════════════════ */
+/* ═══════════ Helpers mathématiques ═══════════ */
 
-const _math = {
-    dist(a, b) {
-        return Math.hypot(b.x - a.x, b.y - a.y);
-    },
+function _dist(a, b) { return Math.hypot(b.x - a.x, b.y - a.y); }
 
-    /** Signed angle at point B in the polyline A→B→C  (radians). */
-    angleBetween(a, b, c) {
-        const v1x = b.x - a.x, v1y = b.y - a.y;
-        const v2x = c.x - b.x, v2y = c.y - b.y;
-        return Math.atan2(v1x * v2y - v1y * v2x, v1x * v2x + v1y * v2y);
-    },
+function _mean(arr) {
+    if (!arr.length) return 0;
+    let s = 0;
+    for (let i = 0; i < arr.length; i++) s += arr[i];
+    return s / arr.length;
+}
 
-    /** Menger curvature at B in A→B→C. */
-    curvature(a, b, c) {
-        const ab = this.dist(a, b), bc = this.dist(b, c), ca = this.dist(c, a);
-        const area = Math.abs((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)) / 2;
-        const denom = ab * bc * ca;
-        return denom === 0 ? 0 : (4 * area) / denom;
-    },
+function _stddev(arr) {
+    if (arr.length < 2) return 0;
+    const m = _mean(arr);
+    let s = 0;
+    for (let i = 0; i < arr.length; i++) s += (arr[i] - m) ** 2;
+    return Math.sqrt(s / (arr.length - 1));
+}
 
-    mean(arr) { return arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : 0; },
-    median(arr) {
-        if (!arr.length) return 0;
-        const sorted = [...arr].sort((a, b) => a - b);
-        const mid = sorted.length >> 1;
-        return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-    },
-    stddev(arr) {
-        if (arr.length < 2) return 0;
-        const m = this.mean(arr);
-        return Math.sqrt(arr.reduce((s, v) => s + (v - m) ** 2, 0) / (arr.length - 1));
-    },
-    min(arr) { return arr.length ? Math.min(...arr) : 0; },
-    max(arr) { return arr.length ? Math.max(...arr) : 0; },
+function _min(arr) {
+    if (!arr.length) return 0;
+    let m = arr[0];
+    for (let i = 1; i < arr.length; i++) if (arr[i] < m) m = arr[i];
+    return m;
+}
 
-    /**
-     * Shannon entropy of a histogram (array of counts).
-     * Useful to measure regularity of time intervals.
-     */
-    entropy(counts) {
-        const total = counts.reduce((s, v) => s + v, 0);
-        if (total === 0) return 0;
-        let h = 0;
-        for (const c of counts) {
-            if (c === 0) continue;
-            const p = c / total;
-            h -= p * Math.log2(p);
-        }
-        return h;
-    },
+function _max(arr) {
+    if (!arr.length) return 0;
+    let m = arr[0];
+    for (let i = 1; i < arr.length; i++) if (arr[i] > m) m = arr[i];
+    return m;
+}
 
-    /** Bin an array of values into `nBins` equal-width bins, return counts. */
-    histogram(arr, nBins = 10) {
-        if (!arr.length) return new Array(nBins).fill(0);
-        const lo = Math.min(...arr), hi = Math.max(...arr);
-        const range = hi - lo || 1;
-        const bins = new Array(nBins).fill(0);
-        for (const v of arr) {
-            const idx = Math.min(nBins - 1, Math.floor(((v - lo) / range) * nBins));
-            bins[idx]++;
-        }
-        return bins;
-    },
+/** Angle signé au point B dans la polyligne A→B→C (radians). */
+function _angle(a, b, c) {
+    const v1x = b.x - a.x, v1y = b.y - a.y;
+    const v2x = c.x - b.x, v2y = c.y - b.y;
+    return Math.atan2(v1x * v2y - v1y * v2x, v1x * v2x + v1y * v2y);
+}
 
-    /** Coefficient of variation = std / mean (0 = perfectly constant). */
-    cv(arr) {
-        const m = this.mean(arr);
-        return m === 0 ? 0 : this.stddev(arr) / m;
-    },
+/** Entropie de Shannon d'un tableau de comptages. */
+function _entropy(counts) {
+    let total = 0;
+    for (let i = 0; i < counts.length; i++) total += counts[i];
+    if (total === 0) return 0;
+    let h = 0;
+    for (let i = 0; i < counts.length; i++) {
+        if (counts[i] === 0) continue;
+        const p = counts[i] / total;
+        h -= p * Math.log2(p);
+    }
+    return h;
+}
 
-    /** Percentile (0-100) of a sorted array. */
-    percentile(sorted, p) {
-        if (!sorted.length) return 0;
-        const idx = (p / 100) * (sorted.length - 1);
-        const lo = Math.floor(idx), hi = Math.ceil(idx);
-        return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
-    },
-};
+/** Histogramme : répartit arr dans nBins bins de largeur égale. */
+function _histogram(arr, nBins) {
+    if (!arr.length) return new Array(nBins).fill(0);
+    let lo = arr[0], hi = arr[0];
+    for (let i = 1; i < arr.length; i++) {
+        if (arr[i] < lo) lo = arr[i];
+        if (arr[i] > hi) hi = arr[i];
+    }
+    const range = hi - lo || 1;
+    const bins = new Array(nBins).fill(0);
+    for (let i = 0; i < arr.length; i++) {
+        const idx = Math.min(nBins - 1, Math.floor(((arr[i] - lo) / range) * nBins));
+        bins[idx]++;
+    }
+    return bins;
+}
 
-
-/* ═══════════════════════════════════════════
-   §2  MouseTracker CLASS
-   ═══════════════════════════════════════════ */
+/* ═══════════ Classe MouseTracker ═══════════ */
 
 class MouseTracker {
     constructor() {
-        /* ── Ring-buffer configuration ── */
-        this.MAX_MOVE_EVENTS = 5000;   // ~30-80 s of data at 60-144 Hz
-        this.MAX_CLICK_EVENTS = 500;
-        this.MAX_SCROLL_EVENTS = 1000;
-        this.MAX_KEY_EVENTS = 500;
+        this.moves = [];          // {x, y, t}
+        this.clicks = [];         // {t, btn}
+        this.clickHolds = [];     // durées en ms
+        this.scrolls = [];        // {dy, t}
+        this._pendingDown = {};   // btn → timestamp
 
-        /* ── Raw event buffers ── */
-        this.moves   = [];   // {x, y, t, mx, my}  (mx/my = movementX/Y)
-        this.clicks  = [];   // {x, y, t, btn, target}
-        this.scrolls = [];   // {x, y, dx, dy, t}
-        this.keys    = [];   // {key, t, type}  (type = 'down' | 'up')
+        this.sessionStart = Date.now();           // timestamp absolu (ms)
+        this.captureStart = performance.now();    // pour durées relatives
 
-        /* ── Cumulative counters ── */
-        this.totalDist      = 0;
-        this.totalClicks    = 0;
-        this.totalScrollDy  = 0;
-        this.totalKeys      = 0;
-
-        /* ── Timing ── */
-        this.sessionStart   = performance.now();
-        this.lastMoveT      = 0;
-        this.lastClickT     = 0;
-        this.lastScrollT    = 0;
-
-        /* ── Idle / pause detection ── */
-        this.IDLE_THRESHOLD = 500;   // ms – no movement ⇒ considered idle
-        this.idleTime       = 0;     // ms
-        this.pauseCount     = 0;
-        this._inPause       = false;
-
-        /* ── Distance accumulator tracking ── */
-        this._distIdx = 0;
-
-        /* ── Visibility ── */
-        this.tabBlurCount   = 0;
-        this.tabHiddenTime  = 0;
-        this._lastHiddenAt  = null;
-
-        /* ── First event flags (bot detection) ── */
-        this.firstMoveDelay = null;   // ms from page load to first move
-        this.firstClickDelay = null;
-        this.entryPoint     = null;   // {x, y} of first move
-
-        /* ── Speed history for sparkline ── */
-        this.speedHistory = [];
-
-        /* ── Bound handlers (for cleanup) ── */
-        this._onMove   = this._handleMove.bind(this);
-        this._onClick  = this._handleClick.bind(this);
-        this._onScroll = this._handleScroll.bind(this);
-        this._onKeyDown = this._handleKeyDown.bind(this);
-        this._onKeyUp   = this._handleKeyUp.bind(this);
-        this._onVisibility = this._handleVisibility.bind(this);
+        this._onMove  = this._handleMove.bind(this);
+        this._onDown  = this._handleDown.bind(this);
+        this._onUp    = this._handleUp.bind(this);
+        this._onWheel = this._handleWheel.bind(this);
     }
 
-    /* ──────────────────── Lifecycle ──────────────────── */
+    /* ── Cycle de vie ── */
 
     start() {
-        document.addEventListener("mousemove",        this._onMove,   { passive: true });
-        document.addEventListener("click",            this._onClick,  { passive: true });
-        document.addEventListener("contextmenu",      this._onClick,  { passive: true });
-        document.addEventListener("wheel",            this._onScroll, { passive: true });
-        document.addEventListener("keydown",          this._onKeyDown,{ passive: true });
-        document.addEventListener("keyup",            this._onKeyUp,  { passive: true });
-        document.addEventListener("visibilitychange", this._onVisibility);
+        document.addEventListener("mousemove", this._onMove,  { passive: true });
+        document.addEventListener("mousedown", this._onDown,  { passive: true });
+        document.addEventListener("mouseup",   this._onUp,    { passive: true });
+        document.addEventListener("wheel",     this._onWheel, { passive: true });
     }
 
     stop() {
-        document.removeEventListener("mousemove",        this._onMove);
-        document.removeEventListener("click",            this._onClick);
-        document.removeEventListener("contextmenu",      this._onClick);
-        document.removeEventListener("wheel",            this._onScroll);
-        document.removeEventListener("keydown",          this._onKeyDown);
-        document.removeEventListener("keyup",            this._onKeyUp);
-        document.removeEventListener("visibilitychange", this._onVisibility);
+        document.removeEventListener("mousemove", this._onMove);
+        document.removeEventListener("mousedown", this._onDown);
+        document.removeEventListener("mouseup",   this._onUp);
+        document.removeEventListener("wheel",     this._onWheel);
     }
 
-    /* ──────────────────── Event handlers ──────────────────── */
+    /* ── Handlers ── */
 
     _handleMove(e) {
-        const now = performance.now();
-
-        const pt = {
-            x:  e.clientX,
-            y:  e.clientY,
-            t:  now,
-            mx: e.movementX ?? null,   // null if UA doesn't support it
-            my: e.movementY ?? null,
-        };
-        this.moves.push(pt);
-        if (this.moves.length > this.MAX_MOVE_EVENTS) this.moves.shift();
-
-        // First-move metadata
-        if (this.firstMoveDelay === null) {
-            this.firstMoveDelay = now - this.sessionStart;
-            this.entryPoint = { x: pt.x, y: pt.y };
-        }
-
-        // Idle / pause tracking
-        if (this.lastMoveT > 0) {
-            const gap = now - this.lastMoveT;
-            if (gap > this.IDLE_THRESHOLD) {
-                this.idleTime += gap;
-                if (!this._inPause) { this.pauseCount++; this._inPause = true; }
-            } else {
-                this._inPause = false;
-            }
-        }
-        this.lastMoveT = now;
+        this.moves.push({ x: e.clientX, y: e.clientY, t: performance.now() });
     }
 
-    _handleClick(e) {
-        const now = performance.now();
-        this.clicks.push({
-            x: e.clientX,
-            y: e.clientY,
-            t: now,
-            btn: e.button,                         // 0=left,1=mid,2=right
-            target: e.target?.tagName ?? "?",      // element clicked
-        });
-        if (this.clicks.length > this.MAX_CLICK_EVENTS) this.clicks.shift();
-
-        this.totalClicks++;
-        if (this.firstClickDelay === null) this.firstClickDelay = now - this.sessionStart;
-        this.lastClickT = now;
+    _handleDown(e) {
+        const t = performance.now();
+        this.clicks.push({ t, btn: e.button });
+        this._pendingDown[e.button] = t;
     }
 
-    _handleScroll(e) {
-        const now = performance.now();
-        this.scrolls.push({
-            x: e.clientX, y: e.clientY,
-            dx: e.deltaX, dy: e.deltaY,
-            t: now,
-        });
-        if (this.scrolls.length > this.MAX_SCROLL_EVENTS) this.scrolls.shift();
-        this.totalScrollDy += Math.abs(e.deltaY);
-        this.lastScrollT = now;
-    }
-
-    _handleKeyDown(e) {
-        this.keys.push({ key: e.key, t: performance.now(), type: "down" });
-        if (this.keys.length > this.MAX_KEY_EVENTS) this.keys.shift();
-        this.totalKeys++;
-    }
-    _handleKeyUp(e) {
-        this.keys.push({ key: e.key, t: performance.now(), type: "up" });
-        if (this.keys.length > this.MAX_KEY_EVENTS) this.keys.shift();
-    }
-
-    _handleVisibility() {
-        if (document.hidden) {
-            this._lastHiddenAt = performance.now();
-            this.tabBlurCount++;
-        } else if (this._lastHiddenAt !== null) {
-            this.tabHiddenTime += performance.now() - this._lastHiddenAt;
-            this._lastHiddenAt = null;
+    _handleUp(e) {
+        const t = performance.now();
+        const downT = this._pendingDown[e.button];
+        if (downT !== undefined) {
+            this.clickHolds.push(t - downT);
+            delete this._pendingDown[e.button];
         }
     }
 
-    /* ═══════════════════════════════════════════════════════
-       §3  FEATURE COMPUTATION
-       ═══════════════════════════════════════════════════════
-       Returns a flat dict of all features, ready to send
-       to the Isolation Forest endpoint.
-    */
+    _handleWheel(e) {
+        this.scrolls.push({ dy: e.deltaY, t: performance.now() });
+    }
+
+    /** Réinitialise tous les buffers pour une nouvelle fenêtre de 5 s. */
+    reset() {
+        this.moves       = [];
+        this.clicks      = [];
+        this.clickHolds  = [];
+        this.scrolls     = [];
+        this._pendingDown = {};
+        this.sessionStart = Date.now();
+        this.captureStart = performance.now();
+    }
+
+    /* ══════════════════════════════════════════════
+       Calcul des features — structure identique
+       au modèle Pydantic MouseBehaviorFeatures
+       ══════════════════════════════════════════════ */
 
     computeFeatures() {
-        const now = performance.now();
-        const ev = this.moves;
-        const n = ev.length;
+        const mv = this.moves;
+        const n  = mv.length;
         if (n < 3) return null;
 
-        const elapsed = (now - this.sessionStart) / 1000;   // seconds
+        const diag  = Math.hypot(window.innerWidth, window.innerHeight);
+        const viewH = window.innerHeight;
+        const elapsed    = (Date.now() - this.sessionStart) / 1000;
+        const captureDur = (mv[n - 1].t - mv[0].t) / 1000;
 
-        // ── 1. Inter-event time deltas (dt) ────────────────
-        const dts = [];          // ms
-        for (let i = 1; i < n; i++) dts.push(ev[i].t - ev[i - 1].t);
-
-        const dtSorted = [...dts].sort((a, b) => a - b);
-        const dt_mean   = _math.mean(dts);
-        const dt_std    = _math.stddev(dts);
-        const dt_cv     = _math.cv(dts);        // low ⇒ bot (too regular)
-        const dt_min    = _math.min(dts);
-        const dt_max    = _math.max(dts);
-        const dt_median = _math.median(dts);
-        const dt_entropy = _math.entropy(_math.histogram(dts, 20));
-
-        // ── 2. Speeds (px/s) ────────────────
-        const speeds = [];
-        let freshDist = 0;
+        /* ───── Deltas inter-événements (secondes) & distances (px) ───── */
+        const dts   = [];
+        const dists = [];
         for (let i = 1; i < n; i++) {
-            const d = _math.dist(ev[i - 1], ev[i]);
-            const dt = dts[i - 1] / 1000;
-            freshDist += d;
-            if (dt > 0) speeds.push(d / dt);
+            dts.push((mv[i].t - mv[i - 1].t) / 1000);
+            dists.push(_dist(mv[i - 1], mv[i]));
         }
 
-        // Accumulate total distance
-        for (let i = Math.max(1, this._distIdx); i < n; i++) {
-            this.totalDist += _math.dist(ev[i - 1], ev[i]);
+        const totalDist = dists.reduce((s, v) => s + v, 0);
+        const netDisp   = _dist(mv[0], mv[n - 1]);
+
+        /* ───── Vitesses normalisées (diag/s) ───── */
+        const speeds = [];
+        for (let i = 0; i < dists.length; i++) {
+            if (dts[i] > 0) speeds.push((dists[i] / diag) / dts[i]);
         }
-        this._distIdx = n;
 
-        const speed_avg = _math.mean(speeds);
-        const speed_std = _math.stddev(speeds);
-        const speed_max = _math.max(speeds);
-        const speed_min = _math.min(speeds);
-        const speed_median = _math.median(speeds);
-
-        // ── 3. Accelerations (px/s²) ────────────────
+        /* ───── Accélérations normalisées (diag/s²) ───── */
         const accels = [];
         for (let i = 1; i < speeds.length; i++) {
-            const dt = dts[i] / 1000 || 0.001;
-            accels.push((speeds[i] - speeds[i - 1]) / dt);
+            if (dts[i] > 0) accels.push((speeds[i] - speeds[i - 1]) / dts[i]);
         }
-        const accel_avg = _math.mean(accels.map(Math.abs));
-        const accel_std = _math.stddev(accels);
-        const accel_max = _math.max(accels.map(Math.abs));
 
-        // ── 4. Jerk (derivative of acceleration, px/s³) ──
-        const jerks = [];
-        for (let i = 1; i < accels.length; i++) {
-            const dt = dts[i + 1] / 1000 || 0.001;
-            jerks.push((accels[i] - accels[i - 1]) / dt);
-        }
-        const jerk_avg = _math.mean(jerks.map(Math.abs));
-        const jerk_std = _math.stddev(jerks);
-        const jerk_max = _math.max(jerks.map(Math.abs));
-
-        // ── 5. Angular velocity (°/s) ────────────────
-        const angVels = [];
-        for (let i = 1; i < n - 1; i++) {
-            const angle = _math.angleBetween(ev[i - 1], ev[i], ev[i + 1]);
-            const dt = (ev[i + 1].t - ev[i - 1].t) / 1000 || 0.001;
-            angVels.push(Math.abs(angle * (180 / Math.PI)) / dt);
-        }
-        const ang_vel_avg = _math.mean(angVels);
-        const ang_vel_std = _math.stddev(angVels);
-
-        // ── 6. Trajectory geometry ────────────────
-        const angles = [], curvatures = [];
+        /* ───── Angles de virage (radians) ───── */
+        const angles = [];
         let dirChanges = 0;
         for (let i = 1; i < n - 1; i++) {
-            const a = _math.angleBetween(ev[i - 1], ev[i], ev[i + 1]);
+            const a = _angle(mv[i - 1], mv[i], mv[i + 1]);
             angles.push(a);
-            curvatures.push(_math.curvature(ev[i - 1], ev[i], ev[i + 1]));
-            if (angles.length >= 2) {
-                if (angles[angles.length - 1] * angles[angles.length - 2] < 0) dirChanges++;
+            if (angles.length >= 2 && angles[angles.length - 1] * angles[angles.length - 2] < 0) {
+                dirChanges++;
             }
         }
 
-        let pathLen = 0;
-        for (let i = 1; i < n; i++) pathLen += _math.dist(ev[i - 1], ev[i]);
-        const displacement = _math.dist(ev[0], ev[n - 1]);
-        const straightness = pathLen > 0 ? displacement / pathLen : 1;
-        const sinuosity    = displacement > 0 ? pathLen / displacement : 1;
-
-        const curvature_avg = _math.mean(curvatures);
-        const curvature_std = _math.stddev(curvatures);
-        const angle_avg     = _math.mean(angles.map(Math.abs)) * (180 / Math.PI);
-        const angle_std     = _math.stddev(angles) * (180 / Math.PI);
-
-        // ── 7. Micro-jitter (last 200 ms) ────────────────
-        //    Humans have natural hand tremor ≈8-12 Hz.
-        //    Bots either have ZERO jitter or artificial jitter.
-        const jitterWin = ev.filter(e => now - e.t < 200);
-        const jitterDisps = [];
-        for (let i = 1; i < jitterWin.length; i++) {
-            jitterDisps.push(_math.dist(jitterWin[i - 1], jitterWin[i]));
+        /* ───── Micro-mouvements & deltas nuls ───── */
+        let microCount = 0, zeroCount = 0;
+        for (let i = 0; i < dists.length; i++) {
+            if (dists[i] < 2) microCount++;
+            if (dists[i] === 0) zeroCount++;
         }
-        const jitter        = _math.stddev(jitterDisps);
-        const jitter_mean   = _math.mean(jitterDisps);
-        const jitter_hz     = jitterWin.length > 1 ? 1000 * (jitterWin.length - 1) / 200 : 0;
-        const jitter_score  = speed_avg > 0 ? (jitter * jitter_hz) / speed_avg : 0;
 
-        // ── 8. Sub-pixel / integer coordinate analysis ──
-        //    Bots often produce only integer coordinates.
-        //    Real mice can have fractional `movementX/Y`.
-        let intCoordCount = 0;
-        let hasMovementData = 0;
-        for (const p of ev) {
-            if (p.x === Math.round(p.x) && p.y === Math.round(p.y)) intCoordCount++;
-            if (p.mx !== null) hasMovementData++;
-        }
-        const int_coord_ratio     = n > 0 ? intCoordCount / n : 1;
-        const has_movement_ratio  = n > 0 ? hasMovementData / n : 0;
-
-        // ── 9. Movement-X/Y consistency check ──
-        //    Compare cumulative movementX/Y with actual position delta.
-        //    Discrepancy may indicate synthetic events.
-        let sumMx = 0, sumMy = 0;
-        for (const p of ev) { sumMx += p.mx ?? 0; sumMy += p.my ?? 0; }
-        const posDeltaX = ev[n - 1].x - ev[0].x;
-        const posDeltaY = ev[n - 1].y - ev[0].y;
-        const movement_drift_x = hasMovementData > 0 ? Math.abs(sumMx - posDeltaX) : -1;
-        const movement_drift_y = hasMovementData > 0 ? Math.abs(sumMy - posDeltaY) : -1;
-
-        // ── 10. Scroll features ────────────────
-        const scrollDts = [];
-        for (let i = 1; i < this.scrolls.length; i++) {
-            scrollDts.push(this.scrolls[i].t - this.scrolls[i - 1].t);
-        }
-        const scroll_count      = this.scrolls.length;
-        const scroll_dy_total   = this.totalScrollDy;
-        const scroll_dt_cv      = _math.cv(scrollDts);   // regularity check
-
-        // ── 11. Click features ────────────────
-        const clickDts = [];
-        for (let i = 1; i < this.clicks.length; i++) {
-            clickDts.push(this.clicks[i].t - this.clicks[i - 1].t);
-        }
-        const click_dt_cv       = _math.cv(clickDts);
-        const click_dt_mean     = _math.mean(clickDts);
-
-        // Time between last move and each click (humans decelerate before clicking)
-        const moveToClickDelays = [];
-        for (const cl of this.clicks) {
-            // Find last move event before this click
-            let lastMove = null;
-            for (let i = this.moves.length - 1; i >= 0; i--) {
-                if (this.moves[i].t <= cl.t) { lastMove = this.moves[i]; break; }
-            }
-            if (lastMove) moveToClickDelays.push(cl.t - lastMove.t);
-        }
-        const move_to_click_delay_avg = _math.mean(moveToClickDelays);
-
-        // ── 12. Activity / session ────────────────
-        const events_per_sec = elapsed > 0 ? n / elapsed : 0;
-        const clicks_per_sec = elapsed > 0 ? this.totalClicks / elapsed : 0;
-        const idle_ratio     = elapsed > 0 ? (this.idleTime / 1000) / elapsed : 0;
-
-        // ── 13. Keyboard presence ──
-        const has_keyboard_activity = this.totalKeys > 0 ? 1 : 0;
-        const keys_per_sec = elapsed > 0 ? this.totalKeys / elapsed : 0;
-
-        // ── 14. Tab visibility ──
-        const tab_blur_count = this.tabBlurCount;
-        const tab_hidden_ratio = elapsed > 0 ? (this.tabHiddenTime / 1000) / elapsed : 0;
-
-        // ── 15. Entry behaviour ──
-        const first_move_delay = this.firstMoveDelay ?? -1;
-        const first_click_delay = this.firstClickDelay ?? -1;
-
-        // ── 16. Speed history for sparkline ──
-        this.speedHistory.push(speed_avg);
-        if (this.speedHistory.length > 60) this.speedHistory.shift();
-
-        // ── 17. Recent points for trajectory viz ──
-        const RECENT_MS = 2000;
-        const recentPoints = ev.filter(e => now - e.t < RECENT_MS);
-
-        // ════════════════════ RETURN ════════════════════
-        return {
-            // ── Timing ──
-            dt_mean, dt_std, dt_cv, dt_min, dt_max, dt_median, dt_entropy,
-
-            // ── Speed ──
-            speed_avg, speed_std, speed_max, speed_min, speed_median,
-            speed_inst: speeds.length ? speeds[speeds.length - 1] : 0,
-
-            // ── Acceleration ──
-            accel_avg, accel_std, accel_max,
-            accel_inst: accels.length ? Math.abs(accels[accels.length - 1]) : 0,
-
-            // ── Jerk ──
-            jerk_avg, jerk_std, jerk_max,
-
-            // ── Angular velocity ──
-            ang_vel_avg, ang_vel_std,
-
-            // ── Trajectory geometry ──
-            curvature_avg, curvature_std,
-            angle_avg, angle_std,
-            dir_changes: dirChanges,
-            straightness, sinuosity,
-
-            // ── Micro-jitter ──
-            jitter, jitter_mean, jitter_hz, jitter_score,
-
-            // ── Coordinate integrity (bot detection) ──
-            int_coord_ratio, has_movement_ratio,
-            movement_drift_x, movement_drift_y,
-
-            // ── Scroll ──
-            scroll_count, scroll_dy_total, scroll_dt_cv,
-
-            // ── Clicks ──
-            total_clicks: this.totalClicks,
-            clicks_per_sec, click_dt_cv, click_dt_mean,
-            move_to_click_delay_avg,
-
-            // ── Idle / pauses ──
-            idle_ratio, pause_count: this.pauseCount,
-            idle_time: this.idleTime / 1000,
-
-            // ── Activity ──
-            events_per_sec, total_events: n,
-            elapsed,
-            total_dist: this.totalDist,
-
-            // ── Keyboard ──
-            has_keyboard_activity, keys_per_sec,
-
-            // ── Tab ──
-            tab_blur_count, tab_hidden_ratio,
-
-            // ── Entry behaviour ──
-            first_move_delay, first_click_delay,
-            entry_x: this.entryPoint?.x ?? -1,
-            entry_y: this.entryPoint?.y ?? -1,
-
-            // ── UI helpers (not sent to backend) ──
-            _recentPoints:  recentPoints,
-            _speedHistory:  this.speedHistory,
-            _clicks:        this.clicks,
-            _pos:           { x: ev[n - 1].x, y: ev[n - 1].y },
+        const movement = {
+            total_move_events:       n,
+            move_event_rate_hz:      elapsed > 0 ? n / elapsed : 0,
+            mean_delta_time_sec:     _mean(dts),
+            std_delta_time_sec:      _stddev(dts),
+            min_delta_time_sec:      _min(dts),
+            max_delta_time_sec:      _max(dts),
+            total_distance_rel:      diag > 0 ? totalDist / diag : 0,
+            net_displacement_rel:    diag > 0 ? netDisp / diag : 0,
+            path_efficiency_ratio:   totalDist > 0 ? netDisp / totalDist : 0,
+            mean_speed_rel:          _mean(speeds),
+            std_speed_rel:           _stddev(speeds),
+            max_speed_rel:           _max(speeds),
+            min_speed_rel:           _min(speeds),
+            mean_acceleration_rel:   _mean(accels.map(Math.abs)),
+            std_acceleration_rel:    _stddev(accels),
+            max_acceleration_rel:    _max(accels.map(Math.abs)),
+            mean_turning_angle_rad:  _mean(angles),
+            std_turning_angle_rad:   _stddev(angles),
+            direction_changes_count: dirChanges,
+            micro_movements_ratio:   dists.length > 0 ? microCount / dists.length : 0,
+            zero_delta_ratio:        dists.length > 0 ? zeroCount / dists.length : 0,
+            jitter_index:            _mean(dists) > 0 ? _stddev(dists) / _mean(dists) : 0,
         };
-    }
 
-    /**
-     * Extract only the features consumed by the Isolation Forest.
-     * Everything prefixed with _ is stripped (UI-only helpers).
-     */
-    getDetectionPayload() {
-        const all = this.computeFeatures();
-        if (!all) return null;
-        const payload = {};
-        for (const [k, v] of Object.entries(all)) {
-            if (!k.startsWith("_")) payload[k] = v;
+        /* ═════ CLICKS ═════ */
+        const cl = this.clicks;
+        let leftCount = 0, rightCount = 0, midCount = 0;
+        for (const c of cl) {
+            if (c.btn === 0) leftCount++;
+            else if (c.btn === 2) rightCount++;
+            else if (c.btn === 1) midCount++;
         }
-        return payload;
-    }
 
-    /**
-     * Return the last N raw move events (for server-side storage).
-     */
-    getRecentRawEvents(n = 200) {
-        return this.moves.slice(-n).map(e => ({
-            x: e.x, y: e.y, t: Math.round(e.t),
-            mx: e.mx, my: e.my,
-        }));
-    }
+        const clickInts = [];
+        for (let i = 1; i < cl.length; i++) clickInts.push((cl[i].t - cl[i - 1].t) / 1000);
 
-    /**
-     * Trim old events to avoid memory buildup.
-     * Call periodically (e.g. every 10 s).
-     */
-    trim(keepMs = 10000) {
-        const cutoff = performance.now() - keepMs;
-        while (this.moves.length > 0 && this.moves[0].t < cutoff) {
-            this.moves.shift();
+        // Double-clics : deux clics gauche consécutifs < 300 ms
+        const leftClicks = cl.filter(c => c.btn === 0);
+        let doubleClicks = 0;
+        for (let i = 1; i < leftClicks.length; i++) {
+            if ((leftClicks[i].t - leftClicks[i - 1].t) < 300) doubleClicks++;
         }
-        this._distIdx = Math.max(0, this._distIdx - 1);
-        while (this.scrolls.length > 0 && this.scrolls[0].t < cutoff) {
-            this.scrolls.shift();
+
+        // Durées de maintien (secondes)
+        const holds = this.clickHolds.map(h => h / 1000);
+
+        // Rafales rapides : ≥ 3 clics en < 500 ms
+        let rapidBursts = 0;
+        for (let i = 0; i < cl.length; i++) {
+            let j = i + 1;
+            while (j < cl.length && (cl[j].t - cl[i].t) < 500) j++;
+            if (j - i >= 3) { rapidBursts++; i = j - 1; }
         }
+
+        // Ratio d'intervalles identiques (tolérance 5 ms)
+        let identicalCount = 0;
+        for (let i = 1; i < clickInts.length; i++) {
+            if (Math.abs(clickInts[i] - clickInts[i - 1]) < 0.005) identicalCount++;
+        }
+
+        const clicks = {
+            total_click_events:        cl.length,
+            left_click_count:          leftCount,
+            right_click_count:         rightCount,
+            middle_click_count:        midCount,
+            double_click_count:        doubleClicks,
+            mean_click_interval_sec:   _mean(clickInts),
+            std_click_interval_sec:    _stddev(clickInts),
+            min_click_interval_sec:    _min(clickInts),
+            max_click_interval_sec:    _max(clickInts),
+            mean_click_hold_sec:       _mean(holds),
+            std_click_hold_sec:        _stddev(holds),
+            max_click_hold_sec:        _max(holds),
+            rapid_click_burst_count:   rapidBursts,
+            identical_interval_ratio:  clickInts.length >= 2
+                ? identicalCount / (clickInts.length - 1) : 0,
+        };
+
+        /* ═════ SCROLL ═════ */
+        const sc = this.scrolls;
+        const scrollDeltasRel = [];
+        for (const s of sc) scrollDeltasRel.push(Math.abs(s.dy) / viewH);
+
+        const scrollInts = [];
+        for (let i = 1; i < sc.length; i++) scrollInts.push((sc[i].t - sc[i - 1].t) / 1000);
+
+        let scrollDirChanges = 0;
+        for (let i = 1; i < sc.length; i++) {
+            if (sc[i].dy * sc[i - 1].dy < 0) scrollDirChanges++;
+        }
+
+        let contSequences = 0, inSeq = false;
+        for (let i = 1; i < sc.length; i++) {
+            if ((sc[i].t - sc[i - 1].t) < 200) {
+                if (!inSeq) { contSequences++; inSeq = true; }
+            } else { inSeq = false; }
+        }
+
+        const scroll = {
+            total_scroll_events:          sc.length,
+            scroll_event_rate_hz:         elapsed > 0 ? sc.length / elapsed : 0,
+            mean_scroll_delta_rel:        _mean(scrollDeltasRel),
+            std_scroll_delta_rel:         _stddev(scrollDeltasRel),
+            max_scroll_delta_rel:         _max(scrollDeltasRel),
+            scroll_direction_changes:     scrollDirChanges,
+            continuous_scroll_sequences:  contSequences,
+            mean_scroll_interval_sec:     _mean(scrollInts),
+        };
+
+        /* ═════ HEURISTIQUES ═════ */
+        const meanSpd = _mean(speeds);
+        let constantCount = 0;
+        for (const s of speeds) {
+            if (meanSpd > 0 && Math.abs(s - meanSpd) / meanSpd < 0.1) constantCount++;
+        }
+
+        let linearCount = 0;
+        for (const a of angles) {
+            if (Math.abs(a) < 0.087) linearCount++;   // < 5°
+        }
+
+        // Lignes droites parfaites : segments de ≥ 3 points colinéaires (angle < ~1°)
+        let perfectLines = 0, streak = 0;
+        for (const a of angles) {
+            if (Math.abs(a) < 0.02) { streak++; }
+            else { if (streak >= 2) perfectLines++; streak = 0; }
+        }
+        if (streak >= 2) perfectLines++;
+
+        // Téléportations : saut > 30 % de la diagonale
+        let teleportCount = 0;
+        const teleThresh = diag * 0.3;
+        for (const d of dists) { if (d > teleThresh) teleportCount++; }
+
+        // Uniformité : 1 − CV des Δt (borné 0–1)
+        const dtCv = _mean(dts) > 0 ? _stddev(dts) / _mean(dts) : 0;
+
+        // Entropie directionnelle (8 bins cardinaux)
+        const dirBins = new Array(8).fill(0);
+        for (let i = 1; i < n; i++) {
+            const a = Math.atan2(mv[i].y - mv[i - 1].y, mv[i].x - mv[i - 1].x);
+            dirBins[Math.floor(((a + Math.PI) / (2 * Math.PI)) * 8) % 8]++;
+        }
+
+        const heuristics = {
+            constant_speed_ratio:         speeds.length > 0 ? constantCount / speeds.length : 0,
+            linear_movement_ratio:        angles.length > 0 ? linearCount / angles.length : 0,
+            perfect_straight_lines_count: perfectLines,
+            teleport_event_count:         teleportCount,
+            event_uniformity_score:       Math.max(0, Math.min(1, 1 - dtCv)),
+            entropy_direction:            _entropy(dirBins),
+            entropy_speed:                _entropy(_histogram(speeds, 10)),
+        };
+
+        /* ═════ RÉSULTAT ═════ */
+        return {
+            session_start_ts:                this.sessionStart,
+            elapsed_since_session_start_sec: elapsed,
+            capture_duration_sec:            captureDur,
+            movement,
+            clicks,
+            scroll,
+            heuristics,
+        };
     }
 }

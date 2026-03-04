@@ -116,132 +116,89 @@
             <span class="icon">❓</span>
             <span class="info">
                 <span class="main-label" id="botLabel">En attente…</span>
-                <span class="sub-label" id="botSub">Collecte des données souris</span>
+                <span class="sub-label" id="botSub">Collecte en cours</span>
             </span>
         </div>
         <div class="confidence-bar"><div class="fill" id="botConfBar" style="width:0;background:#636e72"></div></div>
-        <div style="margin-top:8px">
-            <div class="stat-row"><span class="label">Score IF</span><span class="value" id="sIFScore">–</span></div>
-            <div class="stat-row"><span class="label">Confiance</span><span class="value" id="sIFConf">–</span></div>
-            <div class="stat-row"><span class="label">Prédiction</span><span class="value" id="sIFPred">–</span></div>
-        </div>
     </div>
 
-    <!-- Position -->
+    <!-- Session -->
     <div class="stat-section">
-        <h3>Position</h3>
-        <div class="stat-row"><span class="label">X</span><span class="value" id="sX">–</span></div>
-        <div class="stat-row"><span class="label">Y</span><span class="value" id="sY">–</span></div>
-        <div class="stat-row"><span class="label">Dist. totale</span><span class="value" id="sDist">–</span></div>
+        <h3>⏱ Session</h3>
+        <div class="stat-row"><span class="label">Début</span><span class="value" id="sSessionStart">–</span></div>
+        <div class="stat-row"><span class="label">Temps écoulé</span><span class="value" id="sElapsed">–</span></div>
+        <div class="stat-row"><span class="label">Durée capture</span><span class="value" id="sCapture">–</span></div>
     </div>
 
-    <!-- Vitesse -->
+    <!-- Movement -->
     <div class="stat-section">
-        <h3>Vitesse (px/s)</h3>
-        <div class="stat-row"><span class="label">Instantanée</span><span class="value" id="sSpd">–</span></div>
-        <div class="stat-row"><span class="label">Moyenne</span><span class="value" id="sSpdAvg">–</span></div>
-        <div class="stat-row"><span class="label">Max</span><span class="value" id="sSpdMax">–</span></div>
-        <div class="stat-row"><span class="label">Min</span><span class="value" id="sSpdMin">–</span></div>
-        <div class="stat-row"><span class="label">Médiane</span><span class="value" id="sSpdMed">–</span></div>
-        <div class="stat-row"><span class="label">Écart-type</span><span class="value" id="sSpdStd">–</span></div>
+        <h3>🖱 Mouvement</h3>
+        <div class="stat-row"><span class="label">Événements</span><span class="value" id="m_total_move_events">–</span></div>
+        <div class="stat-row"><span class="label">Fréquence</span><span class="value" id="m_move_event_rate_hz">–</span></div>
+        <div class="stat-row"><span class="label">Δt moyen</span><span class="value" id="m_mean_delta_time_sec">–</span></div>
+        <div class="stat-row"><span class="label">Δt σ</span><span class="value" id="m_std_delta_time_sec">–</span></div>
+        <div class="stat-row"><span class="label">Δt min</span><span class="value" id="m_min_delta_time_sec">–</span></div>
+        <div class="stat-row"><span class="label">Δt max</span><span class="value" id="m_max_delta_time_sec">–</span></div>
+        <div class="stat-row"><span class="label">Distance totale (rel)</span><span class="value" id="m_total_distance_rel">–</span></div>
+        <div class="stat-row"><span class="label">Déplacement net (rel)</span><span class="value" id="m_net_displacement_rel">–</span></div>
+        <div class="stat-row"><span class="label">Efficacité trajet</span><span class="value" id="m_path_efficiency_ratio">–</span></div>
+        <div class="stat-row"><span class="label">Vitesse moy. (rel/s)</span><span class="value" id="m_mean_speed_rel">–</span></div>
+        <div class="stat-row"><span class="label">Vitesse σ</span><span class="value" id="m_std_speed_rel">–</span></div>
+        <div class="stat-row"><span class="label">Vitesse max</span><span class="value" id="m_max_speed_rel">–</span></div>
+        <div class="stat-row"><span class="label">Vitesse min</span><span class="value" id="m_min_speed_rel">–</span></div>
+        <div class="stat-row"><span class="label">Accél. moy. (rel/s²)</span><span class="value" id="m_mean_acceleration_rel">–</span></div>
+        <div class="stat-row"><span class="label">Accél. σ</span><span class="value" id="m_std_acceleration_rel">–</span></div>
+        <div class="stat-row"><span class="label">Accél. max</span><span class="value" id="m_max_acceleration_rel">–</span></div>
+        <div class="stat-row"><span class="label">Angle moyen (rad)</span><span class="value" id="m_mean_turning_angle_rad">–</span></div>
+        <div class="stat-row"><span class="label">Angle σ (rad)</span><span class="value" id="m_std_turning_angle_rad">–</span></div>
+        <div class="stat-row"><span class="label">Changements dir.</span><span class="value" id="m_direction_changes_count">–</span></div>
+        <div class="stat-row"><span class="label">Micro-mouvements</span><span class="value" id="m_micro_movements_ratio">–</span></div>
+        <div class="stat-row"><span class="label">Δ nuls</span><span class="value" id="m_zero_delta_ratio">–</span></div>
+        <div class="stat-row"><span class="label">Indice jitter</span><span class="value" id="m_jitter_index">–</span></div>
     </div>
 
-    <!-- Accélération -->
+    <!-- Clicks -->
     <div class="stat-section">
-        <h3>Accélération (px/s²)</h3>
-        <div class="stat-row"><span class="label">Instantanée</span><span class="value" id="sAcc">–</span></div>
-        <div class="stat-row"><span class="label">Moyenne</span><span class="value" id="sAccAvg">–</span></div>
-        <div class="stat-row"><span class="label">Max</span><span class="value" id="sAccMax">–</span></div>
-        <div class="stat-row"><span class="label">Écart-type</span><span class="value" id="sAccStd">–</span></div>
-    </div>
-
-    <!-- Jerk & angular -->
-    <div class="stat-section">
-        <h3>Jerk &amp; vitesse angulaire</h3>
-        <div class="stat-row"><span class="label">Jerk moy. (px/s³)</span><span class="value" id="sJerkAvg">–</span></div>
-        <div class="stat-row"><span class="label">Jerk max</span><span class="value" id="sJerkMax">–</span></div>
-        <div class="stat-row"><span class="label">Vit. ang. moy. (°/s)</span><span class="value" id="sAngVel">–</span></div>
-        <div class="stat-row"><span class="label">Vit. ang. σ</span><span class="value" id="sAngVelStd">–</span></div>
-    </div>
-
-    <!-- Géométrie de trajectoire -->
-    <div class="stat-section">
-        <h3>Géométrie de trajectoire</h3>
-        <div class="stat-row"><span class="label">Courbure moy.</span><span class="value" id="sCurv">–</span></div>
-        <div class="stat-row"><span class="label">Courbure σ</span><span class="value" id="sCurvStd">–</span></div>
-        <div class="stat-row"><span class="label">Angle moyen (°)</span><span class="value" id="sAngle">–</span></div>
-        <div class="stat-row"><span class="label">Angle σ (°)</span><span class="value" id="sAngleStd">–</span></div>
-        <div class="stat-row"><span class="label">Nb changements dir.</span><span class="value" id="sDirChanges">–</span></div>
-        <div class="stat-row"><span class="label">Rectitude</span><span class="value" id="sStraight">–</span></div>
-        <div class="stat-row"><span class="label">Sinuosité</span><span class="value" id="sSinuosity">–</span></div>
-    </div>
-
-    <!-- Micro-jitter -->
-    <div class="stat-section">
-        <h3>Micro-jitter</h3>
-        <div class="stat-row"><span class="label">Jitter σ (px)</span><span class="value" id="sJitter">–</span></div>
-        <div class="stat-row"><span class="label">Jitter moy. (px)</span><span class="value" id="sJitterMean">–</span></div>
-        <div class="stat-row"><span class="label">Jitter fréq. (Hz)</span><span class="value" id="sJitterHz">–</span></div>
-        <div class="stat-row"><span class="label">Jitter score</span><span class="value" id="sJitterScore">–</span></div>
-    </div>
-
-    <!-- Timing regularity (bot) -->
-    <div class="stat-section">
-        <h3>⏱️ Régularité temporelle</h3>
-        <div class="stat-row"><span class="label">Δt moyen</span><span class="value" id="sDtMean">–</span></div>
-        <div class="stat-row"><span class="label">Δt écart-type</span><span class="value" id="sDtStd">–</span></div>
-        <div class="stat-row"><span class="label">Δt CV (bas=bot)</span><span class="value" id="sDtCv">–</span></div>
-        <div class="stat-row"><span class="label">Δt entropie</span><span class="value" id="sDtEntropy">–</span></div>
-        <div class="stat-row"><span class="label">Coords entières</span><span class="value" id="sIntCoord">–</span></div>
-        <div class="stat-row"><span class="label">movementX/Y dispo</span><span class="value" id="sMovRatio">–</span></div>
-    </div>
-
-    <!-- Clicks & pauses -->
-    <div class="stat-section">
-        <h3>Clics &amp; pauses</h3>
-        <div class="stat-row"><span class="label">Clics totaux</span><span class="value" id="sClicks">0</span></div>
-        <div class="stat-row"><span class="label">CPS (clics/s)</span><span class="value" id="sCPS">–</span></div>
-        <div class="stat-row"><span class="label">Click Δt CV</span><span class="value" id="sClickDtCv">–</span></div>
-        <div class="stat-row"><span class="label">Move→Click délai</span><span class="value" id="sMoveToClick">–</span></div>
-        <div class="stat-row"><span class="label">Temps immobile (s)</span><span class="value" id="sIdle">0.0</span></div>
-        <div class="stat-row"><span class="label">Nb pauses</span><span class="value" id="sPauses">0</span></div>
+        <h3>🖱 Clics</h3>
+        <div class="stat-row"><span class="label">Total</span><span class="value" id="c_total_click_events">–</span></div>
+        <div class="stat-row"><span class="label">Gauche</span><span class="value" id="c_left_click_count">–</span></div>
+        <div class="stat-row"><span class="label">Droit</span><span class="value" id="c_right_click_count">–</span></div>
+        <div class="stat-row"><span class="label">Milieu</span><span class="value" id="c_middle_click_count">–</span></div>
+        <div class="stat-row"><span class="label">Double-clics</span><span class="value" id="c_double_click_count">–</span></div>
+        <div class="stat-row"><span class="label">Intervalle moy.</span><span class="value" id="c_mean_click_interval_sec">–</span></div>
+        <div class="stat-row"><span class="label">Intervalle σ</span><span class="value" id="c_std_click_interval_sec">–</span></div>
+        <div class="stat-row"><span class="label">Intervalle min</span><span class="value" id="c_min_click_interval_sec">–</span></div>
+        <div class="stat-row"><span class="label">Intervalle max</span><span class="value" id="c_max_click_interval_sec">–</span></div>
+        <div class="stat-row"><span class="label">Maintien moy.</span><span class="value" id="c_mean_click_hold_sec">–</span></div>
+        <div class="stat-row"><span class="label">Maintien σ</span><span class="value" id="c_std_click_hold_sec">–</span></div>
+        <div class="stat-row"><span class="label">Maintien max</span><span class="value" id="c_max_click_hold_sec">–</span></div>
+        <div class="stat-row"><span class="label">Rafales rapides</span><span class="value" id="c_rapid_click_burst_count">–</span></div>
+        <div class="stat-row"><span class="label">Intervalles identiques</span><span class="value" id="c_identical_interval_ratio">–</span></div>
     </div>
 
     <!-- Scroll -->
     <div class="stat-section">
-        <h3>Scroll</h3>
-        <div class="stat-row"><span class="label">Événements scroll</span><span class="value" id="sScrollCount">0</span></div>
-        <div class="stat-row"><span class="label">Scroll total (px)</span><span class="value" id="sScrollDy">0</span></div>
-        <div class="stat-row"><span class="label">Scroll Δt CV</span><span class="value" id="sScrollCv">–</span></div>
+        <h3>📜 Scroll</h3>
+        <div class="stat-row"><span class="label">Événements</span><span class="value" id="s_total_scroll_events">–</span></div>
+        <div class="stat-row"><span class="label">Fréquence</span><span class="value" id="s_scroll_event_rate_hz">–</span></div>
+        <div class="stat-row"><span class="label">Delta moy. (rel)</span><span class="value" id="s_mean_scroll_delta_rel">–</span></div>
+        <div class="stat-row"><span class="label">Delta σ (rel)</span><span class="value" id="s_std_scroll_delta_rel">–</span></div>
+        <div class="stat-row"><span class="label">Delta max (rel)</span><span class="value" id="s_max_scroll_delta_rel">–</span></div>
+        <div class="stat-row"><span class="label">Changements dir.</span><span class="value" id="s_scroll_direction_changes">–</span></div>
+        <div class="stat-row"><span class="label">Séquences continues</span><span class="value" id="s_continuous_scroll_sequences">–</span></div>
+        <div class="stat-row"><span class="label">Intervalle moy.</span><span class="value" id="s_mean_scroll_interval_sec">–</span></div>
     </div>
 
-    <!-- Activité -->
+    <!-- Heuristics -->
     <div class="stat-section">
-        <h3>Activité</h3>
-        <div class="stat-row"><span class="label">Événements/s</span><span class="value" id="sEPS">–</span></div>
-        <div class="stat-row"><span class="label">Total événements</span><span class="value" id="sTotal">0</span></div>
-        <div class="stat-row"><span class="label">Temps session (s)</span><span class="value" id="sTime">0</span></div>
-        <div class="stat-row"><span class="label">Touches/s</span><span class="value" id="sKPS">–</span></div>
-        <div class="stat-row"><span class="label">1er mouvement</span><span class="value" id="sFirstMove">–</span></div>
-        <div class="stat-row"><span class="label">1er clic</span><span class="value" id="sFirstClick">–</span></div>
-    </div>
-
-    <!-- Mini trajectory canvas -->
-    <div class="stat-section">
-        <h3>Trajectoire (2 s)</h3>
-        <canvas class="mini-canvas" id="trajCanvas"></canvas>
-    </div>
-
-    <!-- Speed sparkline -->
-    <div class="stat-section">
-        <h3>Vitesse (sparkline)</h3>
-        <canvas class="mini-canvas" id="speedCanvas"></canvas>
-    </div>
-
-    <!-- Heatmap -->
-    <div class="stat-section">
-        <h3>Heatmap (clics)</h3>
-        <canvas class="heatmap-canvas" id="heatCanvas"></canvas>
+        <h3>🔍 Heuristiques</h3>
+        <div class="stat-row"><span class="label">Vitesse constante</span><span class="value" id="h_constant_speed_ratio">–</span></div>
+        <div class="stat-row"><span class="label">Mouvement linéaire</span><span class="value" id="h_linear_movement_ratio">–</span></div>
+        <div class="stat-row"><span class="label">Lignes droites parfaites</span><span class="value" id="h_perfect_straight_lines_count">–</span></div>
+        <div class="stat-row"><span class="label">Téléportations</span><span class="value" id="h_teleport_event_count">–</span></div>
+        <div class="stat-row"><span class="label">Uniformité événements</span><span class="value" id="h_event_uniformity_score">–</span></div>
+        <div class="stat-row"><span class="label">Entropie direction</span><span class="value" id="h_entropy_direction">–</span></div>
+        <div class="stat-row"><span class="label">Entropie vitesse</span><span class="value" id="h_entropy_speed">–</span></div>
     </div>
 </aside>
 
