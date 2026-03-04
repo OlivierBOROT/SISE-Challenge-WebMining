@@ -11,21 +11,21 @@ class MovementMetrics(BaseModel):
     total_move_events: int
     move_event_rate_hz: float  # events/sec
 
-    mean_delta_time_sec: float  # delta entre mouvements en secondes
+    mean_delta_time_sec: float  # time delta between movements in seconds
     std_delta_time_sec: float
     min_delta_time_sec: float
     max_delta_time_sec: float
 
-    total_distance_rel: float  # distance / diagonal viewport
-    net_displacement_rel: float  # net / diagonal viewport
+    total_distance_rel: float  # distance / viewport diagonal
+    net_displacement_rel: float  # net displacement / viewport diagonal
     path_efficiency_ratio: float
 
-    mean_speed_rel: float  # vitesse normalisée par diag et deltaT
+    mean_speed_rel: float  # speed normalized by viewport diagonal and deltaT
     std_speed_rel: float
     max_speed_rel: float
     min_speed_rel: float
 
-    mean_acceleration_rel: float  # accel normalisée par diag et deltaT^2
+    mean_acceleration_rel: float  # acceleration normalized by viewport diagonal and deltaT^2
     std_acceleration_rel: float
     max_acceleration_rel: float
 
@@ -67,13 +67,15 @@ class ScrollMetrics(BaseModel):
     total_scroll_events: int
     scroll_event_rate_hz: float
 
-    mean_scroll_delta_rel: float  # delta / viewport height
+    mean_scroll_delta_rel: float  # scroll delta / viewport height
     std_scroll_delta_rel: float
     max_scroll_delta_rel: float
 
     scroll_direction_changes: int
     continuous_scroll_sequences: int
     mean_scroll_interval_sec: float
+
+    scroll_depth_max: float = 0.0   # max scroll position reached (0.0 - 1.0)
 
 
 class HeuristicMetrics(BaseModel):
@@ -88,15 +90,36 @@ class HeuristicMetrics(BaseModel):
     entropy_speed: float
 
 
-class MouseBehaviorFeatures(BaseModel):
-    """Computed features from a batch of mouse events, to be sent from the front-end for bot detection."""
+class FormMetrics(BaseModel):
+    """Metrics related to form interaction events."""
 
-    session_start_ts: int
-    elapsed_since_session_start_sec: float
-    capture_duration_sec: float
-    total_events: int
+    fields_filled: int = 0
+    field_avg_duration_sec: float = 0.0
+    field_min_duration_sec: float = 0.0  # most revealing for bots (bot ≈ 0ms)
+    field_order: list[str] = []
 
+
+class NavigationMetrics(BaseModel):
+    """Metrics related to page navigation within the session."""
+
+    pages_visited: list[str] = []
+    unique_pages: int = 0
+    revisit_rate: float = 0.0
+    session_duration_sec: float = 0.0
+
+
+class MouseBehaviorBatch(BaseModel):
+    """Full batch of mouse behavior data sent from the JS frontend every 10s."""
+
+    # Metadata
+    session_id: str
+    page: str
+    batch_t: float                  # ms since session start
+
+    # Sub-modules
     movement: MovementMetrics
     clicks: ClickMetrics
     scroll: ScrollMetrics
     heuristics: HeuristicMetrics
+    form: FormMetrics = FormMetrics()
+    navigation: NavigationMetrics = NavigationMetrics()
