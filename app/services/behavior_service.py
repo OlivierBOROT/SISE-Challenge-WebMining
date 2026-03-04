@@ -2,7 +2,7 @@ import os
 import time
 from typing import Any, Dict, List
 
-from behavior_model import FeatureBuilder, ModelManager
+from app.behavior_model import FeatureBuilder, ModelManager
 
 DEFAULT_MODEL_PATH = os.path.join("data", "models", "behavior_analysis_model.joblib")
 
