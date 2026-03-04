@@ -8,12 +8,13 @@ WSGI servers (Gunicorn, Waitress, etc.).
 from dotenv import load_dotenv
 from flask import Flask
 
-from app.services import ProductData
-from app.services import ss
+from app.services import ProductData, StorageService, FeatureService
 
 
 class AppContext(Flask):
     product_data: ProductData
+    storage_service: StorageService
+    feature_service: FeatureService
 
 
 def create_app() -> Flask:
@@ -29,8 +30,9 @@ def create_app() -> Flask:
 
     # Instantiate services in app context
     with app.app_context():
-        app.product_data = ProductData()    # type: ignore
-        app.storage_service = ss.append     # type: ignore
+        app.product_data = ProductData()            # type: ignore
+        app.storage_service = StorageService()      # type: ignore
+        app.feature_service = FeatureService()      # type: ignore
 
     # Init pages routes
     from .routes import main as main_blueprint
