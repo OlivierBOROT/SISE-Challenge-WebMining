@@ -13,20 +13,23 @@ All hyper-parameters are controlled via ModelConfig, so nothing is hard-coded.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import joblib
+import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.svm import OneClassSVM
 
-from app.services.feature_service import FeatureSet, FEATURE_COLUMNS, to_numpy
-from app.services.storage_service import load_numpy, record_count, JSONL_PATH
+from app.services.feature_service import FEATURE_COLUMNS, FeatureSet, to_numpy
+from app.services.storage_service import JSONL_PATH, load_numpy, record_count
+
+logger = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Constants
@@ -34,6 +37,7 @@ from app.services.storage_service import load_numpy, record_count, JSONL_PATH
 
 N_FEATURES = len(FEATURE_COLUMNS)   # must stay in sync with feature_service
 _MODELS_DIR = Path(__file__).parent.parent / "models"
+_RANDOM_STATE = 42
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -143,68 +147,302 @@ class DetectionResult:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Synthetic training data
+# Training Service
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _generate_human_samples(n: int = 600, seed: int = _RANDOM_STATE) -> np.ndarray:
+
+class TrainingService:
     """
-    Generate n synthetic human-like feature vectors.
-    Distributions are calibrated to match realistic browsing behavior.
-    Column order must match FEATURE_COLUMNS exactly.
+    Manages anomaly detection model training, persistence, and inference.
+    Encapsulates model state and caching to support lazy-loading and retraining.
     """
-    rng = np.random.default_rng(seed)
 
-    # fmt: off
-    samples = np.column_stack([
-        # A — Mouse movement
-        rng.uniform(1.5, 3.0, n),                              # entropy_direction
-        rng.uniform(1.2, 2.8, n),                              # entropy_speed
-        rng.lognormal(-4.5, 0.8, n),                           # speed_variance
-        rng.lognormal(-3.0, 0.6, n),                           # max_speed
-        rng.lognormal(-5.5, 0.9, n),                           # mean_acceleration
-        rng.beta(2, 5, n),                                     # path_efficiency (human < 1)
-        rng.integers(10, 60, n).astype(float),                 # direction_changes
-        rng.uniform(0.3, 1.2, n),                              # mean_turning_angle
-        rng.uniform(0.2, 0.8, n),                              # std_turning_angle
-        rng.beta(1.5, 8, n),                                   # constant_speed_ratio (human low)
-        rng.integers(0, 3, n).astype(float),                   # teleport_count
+    def __init__(self, config: ModelConfig = DEFAULT_CONFIG):
+        """
+        Initialize training service.
 
-        # B — Clicks
-        rng.beta(2, 7, n),                                     # click_move_ratio (human low)
-        rng.uniform(0.15, 2.5, n),                             # interclick_min
-        rng.lognormal(-1.0, 0.6, n),                           # interclick_std
-        rng.uniform(0.08, 0.35, n),                            # click_hold_mean
-        rng.integers(0, 2, n).astype(float),                   # rapid_burst_count
-        rng.beta(1, 8, n),                                     # identical_interval_ratio (human low)
+        Args:
+            config: ModelConfig specifying model type and hyper-parameters
+        """
+        self.config = config
+        self._model: BaseEstimator | None = None
+        logger.debug(f"Initializing TrainingService with config: {config.model_type.value}")
 
-        # C — Forms
-        rng.uniform(1.0, 6.0, n),                              # field_min_duration
-        rng.uniform(2.0, 8.0, n),                              # field_avg_duration
-        rng.integers(1, 6, n).astype(float),                   # fields_filled
+    def _build_model(self, cfg: ModelConfig | None = None) -> BaseEstimator:
+        """Instantiate the sklearn estimator described by config (unfitted)."""
+        if cfg is None:
+            cfg = self.config
+        p = cfg.resolved_params
+        match cfg.model_type:
+            case AnomalyModel.ISOLATION_FOREST:
+                return IsolationForest(**p)
+            case AnomalyModel.LOF:
+                return LocalOutlierFactor(**p)
+            case AnomalyModel.ONE_CLASS_SVM:
+                return OneClassSVM(**p)
+            case _:
+                raise ValueError(f"Unknown model type: {cfg.model_type}")
 
-        # D — Scroll
-        rng.uniform(0.25, 0.90, n),                            # scroll_depth_max
-        rng.uniform(0.5, 3.0, n),                              # scroll_event_rate
-        rng.integers(1, 8, n).astype(float),                   # scroll_direction_changes
+    def _generate_human_samples(self, n: int = 600, seed: int = _RANDOM_STATE) -> np.ndarray:
+        """Generate n synthetic human-like feature vectors."""
+        rng = np.random.default_rng(seed)
 
-        # E — Session / Navigation
-        rng.lognormal(3.5, 0.7, n),                            # session_duration (>10s)
-        rng.integers(1, 6, n).astype(float),                   # pages_visited
-        rng.beta(1.5, 6, n),                                   # revisit_rate
-        rng.uniform(0.05, 0.6, n),                             # scroll_click_ratio
-    ])
-    # fmt: on
+        # fmt: off
+        samples = np.column_stack([
+            # A — Mouse movement
+            rng.uniform(1.5, 3.0, n),                              # entropy_direction
+            rng.uniform(1.2, 2.8, n),                              # entropy_speed
+            rng.lognormal(-4.5, 0.8, n),                           # speed_variance
+            rng.lognormal(-3.0, 0.6, n),                           # max_speed
+            rng.lognormal(-5.5, 0.9, n),                           # mean_acceleration
+            rng.beta(2, 5, n),                                     # path_efficiency (human < 1)
+            rng.integers(10, 60, n).astype(float),                 # direction_changes
+            rng.uniform(0.3, 1.2, n),                              # mean_turning_angle
+            rng.uniform(0.2, 0.8, n),                              # std_turning_angle
+            rng.beta(1.5, 8, n),                                   # constant_speed_ratio (human low)
+            rng.integers(0, 3, n).astype(float),                   # teleport_count
 
-    assert samples.shape == (n, N_FEATURES), (
-        f"Shape mismatch: got {samples.shape}, expected ({n}, {N_FEATURES}). "
-        "Check _generate_human_samples() column count matches FEATURE_COLUMNS."
-    )
-    return samples
+            # B — Clicks
+            rng.beta(2, 7, n),                                     # click_move_ratio (human low)
+            rng.uniform(0.15, 2.5, n),                             # interclick_min
+            rng.lognormal(-1.0, 0.6, n),                           # interclick_std
+            rng.uniform(0.08, 0.35, n),                            # click_hold_mean
+            rng.integers(0, 2, n).astype(float),                   # rapid_burst_count
+            rng.beta(1, 8, n),                                     # identical_interval_ratio (human low)
+
+            # C — Forms
+            rng.uniform(1.0, 6.0, n),                              # field_min_duration
+            rng.uniform(2.0, 8.0, n),                              # field_avg_duration
+            rng.integers(1, 6, n).astype(float),                   # fields_filled
+
+            # D — Scroll
+            rng.uniform(0.25, 0.90, n),                            # scroll_depth_max
+            rng.uniform(0.5, 3.0, n),                              # scroll_event_rate
+            rng.integers(1, 8, n).astype(float),                   # scroll_direction_changes
+
+            # E — Session / Navigation
+            rng.lognormal(3.5, 0.7, n),                            # session_duration (>10s)
+            rng.integers(1, 6, n).astype(float),                   # pages_visited
+            rng.beta(1.5, 6, n),                                   # revisit_rate
+            rng.uniform(0.05, 0.6, n),                             # scroll_click_ratio
+        ])
+        # fmt: on
+
+        assert samples.shape == (n, N_FEATURES), (
+            f"Shape mismatch: got {samples.shape}, expected ({n}, {N_FEATURES}). "
+            "Check _generate_human_samples() column count matches FEATURE_COLUMNS."
+        )
+        return samples
+
+    def train(
+        self,
+        feature_sets: list[FeatureSet] | None = None,
+        use_stored: bool = True,
+        n_synthetic: int = 600,
+        cfg: ModelConfig | None = None,
+    ) -> BaseEstimator:
+        """
+        Train the anomaly detection model.
+
+        Args:
+            feature_sets: Optional list of FeatureSet objects (assumed human samples)
+            use_stored: If True, load records from data/features.jsonl
+            n_synthetic: Number of synthetic human samples to add
+            cfg: Optional ModelConfig. If None, uses self.config
+
+        Returns:
+            Fitted estimator
+        """
+        if cfg is None:
+            cfg = self.config
+
+        parts: list[np.ndarray] = []
+
+        if feature_sets:
+            real = np.vstack([to_numpy(fs) for fs in feature_sets])
+            parts.append(real)
+
+        if use_stored:
+            n = record_count(JSONL_PATH)
+            if n > 0:
+                parts.append(load_numpy(JSONL_PATH))
+                logger.debug(f"Loaded {n} stored records from {JSONL_PATH}")
+
+        if n_synthetic > 0:
+            parts.append(self._generate_human_samples(n_synthetic))
+
+        if not parts:
+            raise ValueError(
+                "No training data: provide feature_sets, set use_stored=True with existing data, "
+                "or set n_synthetic > 0."
+            )
+
+        X = np.vstack(parts)
+        model = self._build_model(cfg)
+        model.fit(X)
+        logger.info(
+            f"Trained {cfg.model_type.value} on {X.shape[0]} samples "
+            f"with params: {cfg.resolved_params}"
+        )
+        return model
+
+    def save(self, model: BaseEstimator | None = None, cfg: ModelConfig | None = None) -> None:
+        """
+        Serialize the trained model to disk.
+
+        Args:
+            model: Optional model to save. If None, saves self._model
+            cfg: Optional ModelConfig. If None, uses self.config
+        """
+        if model is None:
+            model = self._model
+        if model is None:
+            raise ValueError("No model to save. Train or load a model first.")
+
+        if cfg is None:
+            cfg = self.config
+
+        path = cfg.model_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        joblib.dump(model, path)
+        logger.info(f"Model saved → {path}")
+
+    def load(self, cfg: ModelConfig | None = None) -> BaseEstimator:
+        """
+        Load a previously serialized model from disk.
+
+        Args:
+            cfg: Optional ModelConfig. If None, uses self.config
+
+        Returns:
+            Loaded estimator
+        """
+        if cfg is None:
+            cfg = self.config
+
+        path = cfg.model_path
+        if not path.exists():
+            raise FileNotFoundError(
+                f"No model found at {path}. Call train() and save() first."
+            )
+        self._model = joblib.load(path)
+        logger.debug(f"Loaded model from {path}")
+        return self._model
+
+    def get_model(self, cfg: ModelConfig | None = None) -> BaseEstimator:
+        """
+        Return the cached model.
+        On first call: load from disk if available, otherwise train on synthetic data.
+
+        Args:
+            cfg: Optional ModelConfig. If None, uses self.config
+
+        Returns:
+            Estimator (loaded or trained)
+        """
+        if cfg is None:
+            cfg = self.config
+
+        if self._model is None:
+            if cfg.model_path.exists():
+                self._model = self.load(cfg)
+            else:
+                self._model = self.train(cfg=cfg)
+                self.save(self._model, cfg)
+        return self._model
+
+    def reload_model(self, cfg: ModelConfig | None = None) -> BaseEstimator:
+        """
+        Force-retrain and cache a fresh model, then save it.
+
+        Args:
+            cfg: Optional ModelConfig. If None, uses self.config
+
+        Returns:
+            Newly trained estimator
+        """
+        if cfg is None:
+            cfg = self.config
+
+        self._model = self.train(cfg=cfg)
+        self.save(self._model, cfg)
+        return self._model
+
+    def predict(
+        self,
+        feature_set: FeatureSet,
+        model: BaseEstimator | None = None,
+        cfg: ModelConfig | None = None,
+    ) -> DetectionResult:
+        """
+        Run bot detection on a single FeatureSet.
+
+        Args:
+            feature_set: Output of feature_service.extract()
+            model: Optional pre-loaded estimator. Uses get_model() if None
+            cfg: Optional ModelConfig. If None, uses self.config
+
+        Returns:
+            DetectionResult with label, score, anomaly, confidence, model_type
+        """
+        if cfg is None:
+            cfg = self.config
+
+        if model is None:
+            model = self.get_model(cfg)
+
+        X = to_numpy(feature_set)
+        anomaly: int = int(model.predict(X)[0])
+        score: float = float(model.decision_function(X)[0])
+
+        label = "human" if anomaly == 1 else "bot"
+        divisor = _CONF_DIVISOR[cfg.model_type]
+        confidence = min(1.0, abs(score) / divisor)
+
+        return DetectionResult(
+            session_id=feature_set.session_id,
+            label=label,
+            score=round(score, 6),
+            anomaly=anomaly,
+            confidence=round(confidence, 4),
+            model_type=cfg.model_type.value,
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Train
+# Module-level singleton for backward compatibility
 # ─────────────────────────────────────────────────────────────────────────────
+
+_default_service: TrainingService | None = None
+
+
+def get_service(config: ModelConfig = DEFAULT_CONFIG) -> TrainingService:
+    """Get or create the default training service singleton."""
+    global _default_service
+    if _default_service is None:
+        logger.debug("Initializing default TrainingService instance")
+        _default_service = TrainingService(config)
+    return _default_service
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Legacy module-level functions for backward compatibility
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _build_model(config: ModelConfig) -> BaseEstimator:
+    """Instantiate the sklearn estimator described by config (unfitted)."""
+    p = config.resolved_params
+    match config.model_type:
+        case AnomalyModel.ISOLATION_FOREST:
+            return IsolationForest(**p)
+        case AnomalyModel.LOF:
+            return LocalOutlierFactor(**p)
+        case AnomalyModel.ONE_CLASS_SVM:
+            return OneClassSVM(**p)
+        case _:
+            raise ValueError(f"Unknown model type: {config.model_type}")
+
 
 def train(
     config: ModelConfig = DEFAULT_CONFIG,
@@ -212,148 +450,37 @@ def train(
     use_stored: bool = True,
     n_synthetic: int = 600,
 ) -> BaseEstimator:
-    """
-    Train the anomaly detection model described by config.
+    """Backward compatible function. Uses default service singleton."""
+    return get_service(config).train(feature_sets, use_stored, n_synthetic, config)
 
-    Data priority (all sources are stacked together):
-    1. `feature_sets`  — FeatureSet objects passed directly (e.g. from the current session)
-    2. `use_stored`    — records accumulated in data/features.jsonl via storage_service.append()
-    3. `n_synthetic`   — synthetic human samples to pad / bootstrap cold-start
-
-    Args:
-        config:        ModelConfig specifying model type and hyper-parameters.
-        feature_sets:  Optional list of FeatureSet objects (assumed human samples).
-        use_stored:    If True, load all records from the JSONL store and include them.
-        n_synthetic:   Number of synthetic human samples to add. Set to 0 to
-                       train on real data only (requires feature_sets or use_stored).
-
-    Returns:
-        Fitted estimator.
-    """
-    parts: list[np.ndarray] = []
-
-    if feature_sets:
-        real = np.vstack([to_numpy(fs) for fs in feature_sets])  # (n, N_FEATURES)
-        parts.append(real)
-
-    if use_stored:
-        n = record_count(JSONL_PATH)
-        if n > 0:
-            parts.append(load_numpy(JSONL_PATH))
-            print(f"[training_service] Loaded {n} stored records from {JSONL_PATH}")
-
-    if n_synthetic > 0:
-        parts.append(_generate_human_samples(n_synthetic))
-
-    if not parts:
-        raise ValueError(
-            "No training data: provide feature_sets, set use_stored=True with existing data, "
-            "or set n_synthetic > 0."
-        )
-
-    X = np.vstack(parts)
-    model = _build_model(config)
-    model.fit(X)
-    print(f"[training_service] Trained {config.model_type.value} on {X.shape[0]} samples "
-          f"with params: {config.resolved_params}")
-    return model
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Persist
-# ─────────────────────────────────────────────────────────────────────────────
 
 def save(model: BaseEstimator, config: ModelConfig = DEFAULT_CONFIG) -> None:
-    """Serialize the trained model to disk (path is derived from config)."""
-    path = config.model_path
-    path.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(model, path)
-    print(f"[training_service] Model saved → {path}")
+    """Backward compatible function. Uses default service singleton."""
+    get_service(config).save(model, config)
 
 
 def load(config: ModelConfig = DEFAULT_CONFIG) -> BaseEstimator:
-    """Load a previously serialized model from disk."""
-    path = config.model_path
-    if not path.exists():
-        raise FileNotFoundError(
-            f"No model found at {path}. Call train() and save() first."
-        )
-    return joblib.load(path)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Lazy singleton — used by predict() when no model is passed explicitly
-# ─────────────────────────────────────────────────────────────────────────────
-
-_model: BaseEstimator | None = None
+    """Backward compatible function. Uses default service singleton."""
+    return get_service(config).load(config)
 
 
 def _get_model(config: ModelConfig = DEFAULT_CONFIG) -> BaseEstimator:
-    """
-    Return the cached model for the given config.
-    On first call: load from disk if available, otherwise train on synthetic data.
-    Note: the cache holds one model at a time. If you switch config at runtime,
-    call reload_model() to invalidate the cache.
-    """
-    global _model
-    if _model is None:
-        if config.model_path.exists():
-            _model = load(config)
-        else:
-            _model = train(config)
-            save(_model, config)
-    return _model
+    """Backward compatible function. Uses default service singleton."""
+    return get_service(config).get_model(config)
 
 
 def reload_model(config: ModelConfig = DEFAULT_CONFIG) -> BaseEstimator:
-    """Force-retrain and cache a fresh model, then save it."""
-    global _model
-    _model = train(config)
-    save(_model, config)
-    return _model
+    """Backward compatible function. Uses default service singleton."""
+    return get_service(config).reload_model(config)
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Predict
-# ─────────────────────────────────────────────────────────────────────────────
 
 def predict(
     feature_set: FeatureSet,
     model: BaseEstimator | None = None,
     config: ModelConfig = DEFAULT_CONFIG,
 ) -> DetectionResult:
-    """
-    Run bot detection on a single FeatureSet.
-
-    Args:
-        feature_set:  Output of feature_service.extract().
-        model:        Optional pre-loaded estimator. Uses the lazy singleton if None.
-        config:       ModelConfig used to resolve the confidence divisor and
-                      model type tag. Ignored if model is passed explicitly
-                      without a config — in that case pass config too.
-
-    Returns:
-        DetectionResult with label, raw score, anomaly flag, confidence, and model_type.
-    """
-    if model is None:
-        model = _get_model(config)
-
-    X = to_numpy(feature_set)                            # shape (1, N_FEATURES)
-    anomaly: int = int(model.predict(X)[0])              # 1 = human, -1 = bot
-    score: float = float(model.decision_function(X)[0])  # positive = human
-
-    label = "human" if anomaly == 1 else "bot"
-    divisor = _CONF_DIVISOR[config.model_type]
-    confidence = min(1.0, abs(score) / divisor)
-
-    return DetectionResult(
-        session_id=feature_set.session_id,
-        label=label,
-        score=round(score, 6),
-        anomaly=anomaly,
-        confidence=round(confidence, 4),
-        model_type=config.model_type.value,
-    )
+    """Backward compatible function. Uses default service singleton."""
+    return get_service(config).predict(feature_set, model, config)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

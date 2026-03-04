@@ -1,9 +1,11 @@
-import os
+import logging
 import json
 import math
+import os
 
 from app.models import Product
 
+logger = logging.getLogger(__name__)
 
 
 class ProductData:
@@ -105,3 +107,19 @@ class ProductData:
         start = (page - 1) * count
         end = start + count
         return data[start:end], max_page
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Module-level singleton for backward compatibility
+# ─────────────────────────────────────────────────────────────────────────────
+
+_default_product_data: ProductData | None = None
+
+
+def get_product_data() -> ProductData:
+    """Get or create the default product data singleton."""
+    global _default_product_data
+    if _default_product_data is None:
+        logger.debug("Initializing default ProductData instance")
+        _default_product_data = ProductData()
+    return _default_product_data
