@@ -1,8 +1,15 @@
 /**
- * MouseTracker — Collecte d'événements souris & calcul des features.
+ * BehaviorTracker — Collecte d'événements souris, clics, scroll et formulaires.
  *
  * Produit un objet structuré identique au modèle Pydantic
- * MouseBehaviorFeatures (session, movement, clicks, scroll, heuristics).
+ * MouseBehaviorBatch (movement, clicks, scroll, heuristics, form).
+ *
+ * Usage :
+ *   const tracker = new BehaviorTracker({ sessionId: 'abc123' });
+ *   tracker.start();
+ *   // ... later ...
+ *   const batch = tracker.computeBatch();
+ *   tracker.reset();
  */
 
 "use strict";
@@ -78,15 +85,27 @@ function _histogram(arr, nBins) {
     return bins;
 }
 
-/* ═══════════ Classe MouseTracker ═══════════ */
+/* ═══════════ Classe BehaviorTracker ═══════════ */
 
-class MouseTracker {
-    constructor() {
+class BehaviorTracker {
+    /**
+     * @param {object} [opts]
+     * @param {string} [opts.sessionId]  Identifiant de session (UUID ou autre).
+     * @param {string} [opts.formSelector]  Sélecteur CSS des champs à surveiller (défaut : input, select, textarea).
+     */
+    constructor(opts = {}) {
+        this.sessionId = opts.sessionId ?? crypto.randomUUID();
+        this._formSelector = opts.formSelector ?? 'input, select, textarea';
+
         this.moves = [];          // {x, y, t}
         this.clicks = [];         // {t, btn}
         this.clickHolds = [];     // durées en ms
         this.scrolls = [];        // {dy, t}
         this._pendingDown = {};   // btn → timestamp
+
+        /* ── Form tracking ── */
+        this._formFields = [];    // {name, focusT, blurT} — enregistrements complets
+        this._pendingFocus = null; // {name, t} — champ actuellement focus
 
         // sessionStart: timestamp absolu (ms) du chargement de la page (global)
         if (!window._globalSessionStart) {
@@ -95,19 +114,23 @@ class MouseTracker {
         this.sessionStart = window._globalSessionStart;
         this.captureStart = performance.now();    // pour durées relatives (batch)
 
-        this._onMove  = this._handleMove.bind(this);
-        this._onDown  = this._handleDown.bind(this);
-        this._onUp    = this._handleUp.bind(this);
-        this._onWheel = this._handleWheel.bind(this);
+        this._onMove   = this._handleMove.bind(this);
+        this._onDown   = this._handleDown.bind(this);
+        this._onUp     = this._handleUp.bind(this);
+        this._onWheel  = this._handleWheel.bind(this);
+        this._onFocusIn  = this._handleFocusIn.bind(this);
+        this._onFocusOut = this._handleFocusOut.bind(this);
     }
 
     /* ── Cycle de vie ── */
 
     start() {
-        document.addEventListener("mousemove", this._onMove,  { passive: true });
-        document.addEventListener("mousedown", this._onDown,  { passive: true });
-        document.addEventListener("mouseup",   this._onUp,    { passive: true });
-        document.addEventListener("wheel",     this._onWheel, { passive: true });
+        document.addEventListener("mousemove", this._onMove,   { passive: true });
+        document.addEventListener("mousedown", this._onDown,   { passive: true });
+        document.addEventListener("mouseup",   this._onUp,     { passive: true });
+        document.addEventListener("wheel",     this._onWheel,  { passive: true });
+        document.addEventListener("focusin",   this._onFocusIn);
+        document.addEventListener("focusout",  this._onFocusOut);
     }
 
     stop() {
@@ -115,6 +138,8 @@ class MouseTracker {
         document.removeEventListener("mousedown", this._onDown);
         document.removeEventListener("mouseup",   this._onUp);
         document.removeEventListener("wheel",     this._onWheel);
+        document.removeEventListener("focusin",   this._onFocusIn);
+        document.removeEventListener("focusout",  this._onFocusOut);
     }
 
     /* ── Handlers ── */
@@ -142,21 +167,56 @@ class MouseTracker {
         this.scrolls.push({ dy: e.deltaY, t: performance.now() });
     }
 
+    _handleFocusIn(e) {
+        const el = e.target;
+        if (!el.matches(this._formSelector)) return;
+        const name = el.name || el.id || el.type || 'unknown';
+        this._pendingFocus = { name, t: performance.now() };
+    }
+
+    _handleFocusOut(e) {
+        const el = e.target;
+        if (!el.matches(this._formSelector)) return;
+        if (!this._pendingFocus) return;
+        const blurT = performance.now();
+        this._formFields.push({
+            name:   this._pendingFocus.name,
+            focusT: this._pendingFocus.t,
+            blurT,
+        });
+        this._pendingFocus = null;
+    }
+
     /** Réinitialise tous les buffers pour une nouvelle fenêtre de collecte (batch), mais conserve le sessionStart global. */
     reset() {
-        this.moves       = [];
-        this.clicks      = [];
-        this.clickHolds  = [];
-        this.scrolls     = [];
+        this.moves        = [];
+        this.clicks       = [];
+        this.clickHolds   = [];
+        this.scrolls      = [];
         this._pendingDown = {};
+        this._formFields  = [];
+        this._pendingFocus = null;
         // Ne pas toucher à this.sessionStart (global)
         this.captureStart = performance.now();
     }
 
     /* ══════════════════════════════════════════════
        Calcul des features — structure identique
-       au modèle Pydantic MouseBehaviorFeatures
+       au modèle Pydantic MouseBehaviorBatch
        ══════════════════════════════════════════════ */
+
+    /** Calcule les FormMetrics pour le batch courant. */
+    _computeForm() {
+        const fields = this._formFields;
+        const durations = fields.map(f => (f.blurT - f.focusT) / 1000);
+        const order = fields.map(f => f.name);
+        return {
+            fields_filled:         fields.length,
+            field_avg_duration_sec: _mean(durations),
+            field_min_duration_sec: _min(durations),
+            field_order:           order,
+        };
+    }
 
     computeFeatures() {
         const mv = this.moves;
@@ -364,15 +424,24 @@ class MouseTracker {
             entropy_speed:                _entropy(_histogram(speeds, 10)),
         };
 
-        /* ═════ RÉSULTAT ═════ */
+        const form = this._computeForm();
+
+        /* ═════ RÉSULTAT — conforme à MouseBehaviorBatch ═════ */
         return {
-            session_start_ts:                this.sessionStart,
-            elapsed_since_session_start_sec: elapsed,
-            total_events: n,
+            session_id:                      this.sessionId,
+            page:                            window.location.pathname,
+            batch_t:                         Date.now() - this.sessionStart,
             movement,
             clicks,
             scroll,
             heuristics,
+            form,
         };
     }
+
+    /** Alias sémantique de computeFeatures(). */
+    computeBatch() { return this.computeFeatures(); }
 }
+
+// Alias rétrocompatibilité
+const MouseTracker = BehaviorTracker;
