@@ -1,0 +1,107 @@
+import os
+import json
+import math
+
+from app.models import Product
+
+
+
+class ProductData:
+
+    def __init__(self) -> None:
+        self.data, self.categories = self._load_data()
+
+    def _load_data(self) -> tuple[list[Product], tuple[str]]:
+        """
+        Loads product json from data directory
+
+        Returns:
+            dict: Products
+        """
+        data_path = os.environ.get("DATA_PATH")
+        json_path = os.path.join(data_path, "products", "products.json") #type: ignore
+
+        with open(json_path, 'r') as f:
+            content = json.load(f)
+
+            categories = tuple(
+                {p['category'] for p in content}
+            )
+
+            products = [
+                Product(**p) for p in content
+            ]
+
+        return products, categories
+        
+    def get_all(self) -> list[Product]:
+        """
+        Retrieve all products
+
+        Returns:
+            dict: Products
+        """
+        return self.data
+    
+    def get_by_category(self, category: str) -> list[Product]:
+        """
+        Retrieve all products from a specific category
+
+        Args:
+            category (str): Product category
+
+        Returns:
+            dict: Products
+        """
+        products = [p for p in self.data if p.category == category]
+        return products
+    
+    def get_by_id(self, id: str) -> Product:
+        """
+        Retrieve a product by its ID
+
+        Args:
+            id (str): Product ID
+
+        Returns:
+            dict: dict
+        """
+        for p in self.data:
+            if p.id == id:
+                return p
+            
+        raise IndexError(f"No product found with id {id}")
+    
+    def get_available_categories(self) -> tuple[str]:
+        """
+        Return a list of available product categories
+
+        Returns:
+            list[str]: Product categories
+        """
+        return self.categories
+    
+    def paginate(self, data: list[Product], page: int, count=21) -> tuple[list[Product], int]:
+        """
+        Get paginated product
+
+        Args:
+            page (int): Page to get
+            count (int, optional): Products per page. Defaults to 20.
+
+        Returns:
+            list[Product]: Paginated products
+            int: Last page index for this data
+        """
+        if page < 1:
+            raise ValueError("page must be >= 1")
+        if count < 1:
+            raise ValueError("count must be >= 1")
+
+        max_page = math.ceil(len(data) / count)
+        if page > max_page:
+            page = max_page
+
+        start = (page - 1) * count
+        end = start + count
+        return data[start:end], max_page
