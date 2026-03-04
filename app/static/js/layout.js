@@ -27,6 +27,17 @@ async function renderProducts(category="all", page=1) {
     const response = await fetch(`ajax/render_products?${params}`);
     const html = await response.text();
     productsSection.innerHTML = html;
+    // Bind click
+    const products = productsSection.querySelectorAll('article');
+    products.forEach(product => {
+        product.addEventListener('click', () => {
+            const currentActive = productsSection.querySelector('article.active');
+            if (currentActive) {
+                currentActive.classList.remove('active');
+            }
+            product.classList.add('active');
+        })
+    })
     // Bind pagination
     const paginationForm = main.querySelector('form.pagination');
     paginationForm.addEventListener('submit', (e) => {
