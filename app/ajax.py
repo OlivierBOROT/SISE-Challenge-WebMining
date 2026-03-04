@@ -4,9 +4,10 @@ AJAX endpoints
 Only design here function designed to be called from
 front end. No complex logic.
 """
-from flask import Blueprint, render_template, jsonify, current_app, request
 
 from typing import cast
+
+from flask import Blueprint, current_app, jsonify, render_template, request
 
 from app import AppContext
 
@@ -16,10 +17,10 @@ app = cast(AppContext, current_app)
 ajax = Blueprint("ajax", __name__)
 
 
-
 # ------------- Render templates
 
-@ajax.route('/render_categories')
+
+@ajax.route("/render_categories")
 def render_categories():
     """
     Render categories section
@@ -28,12 +29,10 @@ def render_categories():
         HTML: Categories menu section
     """
     categories = app.product_data.get_available_categories()
-    return render_template(
-        "elements/categories.html",
-        categories=categories
-    )
+    return render_template("elements/categories.html", categories=categories)
 
-@ajax.route('/render_products/')
+
+@ajax.route("/render_products/")
 def render_products():
     """
     Render product result
@@ -45,8 +44,8 @@ def render_products():
     Returns:
         html: Product result section
     """
-    category = request.args.get('category', 'all')
-    page = request.args.get('page', 0, type=int)
+    category = request.args.get("category", "all")
+    page = request.args.get("page", 0, type=int)
 
     if category == "all":
         products = app.product_data.get_all()
@@ -60,14 +59,14 @@ def render_products():
         category=category,
         products=products,
         page=page,
-        max_page=max_page
+        max_page=max_page,
     )
-
 
 
 # ------------- Tracking
 
-@ajax.route('/track_inputs', methods=['POST'])
+
+@ajax.route("/track_inputs", methods=["POST"])
 def track_inputs():
     """
     Predict bot / user label from client inputs
