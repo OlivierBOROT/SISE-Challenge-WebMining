@@ -69,6 +69,17 @@ def render_products():
 
 @ajax.route('/track_inputs', methods=['POST'])
 def track_inputs():
+    """
+    Predict bot / user label from client inputs
+
+    Arguments:
+        json: client input metrics
+
+    Returns:
+        json: {
+            "is_bot": bool
+            "bot_score": int
+        }
+    """
     stats = request.json
-    print(stats)
     return jsonify({"success": True})

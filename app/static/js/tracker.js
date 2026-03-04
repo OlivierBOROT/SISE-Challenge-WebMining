@@ -14,7 +14,6 @@ function trackInputs() {
             return
         }
         // Send stats to python
-        console.log(stats);
         const response = await fetch('ajax/track_inputs', {
             method: 'POST',
             headers: {
