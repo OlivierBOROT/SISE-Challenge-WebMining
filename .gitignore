@@ -89,3 +89,4 @@ desktop.ini
 *.bak
 logs/
 docs/notes.md
+uv.lock

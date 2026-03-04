@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Fake Boutique</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+  <header class="header">
+    <div class="logo">FakeBoutique</div>
+    <input type="text" class="search-bar" placeholder="Rechercher un produit...">
+    <button class="search-btn">Rechercher</button>
+  </header>
+
+  <main class="content">
+    <section class="categories"></section>
+    <section class="products"></section>
+  </main>
+</body>
+
+<script src="{{ url_for('static', filename='js/layout.js') }}"></script>
+
+</html>
