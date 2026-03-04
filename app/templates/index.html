@@ -1,24 +1,34 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <title>Amarhône</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-</head>
-<body>
-  <header class="header">
-    <img class="logo" src="{{ url_for('static', filename='images/logo.png') }}" height="30px"></img>
-    <input type="text" class="search-bar" placeholder="Rechercher un produit...">
-    <button class="search-btn">Rechercher</button>
-  </header>
 
-  <main class="content">
-    <section class="categories"></section>
-    <section class="products"></section>
-  </main>
+<head>
+   <meta charset="UTF-8">
+   <title>Amarhône</title>
+   <!-- Custom CSS -->
+   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+   <link rel="stylesheet" href="{{ url_for('static', filename='css/analytics.css') }}">
+</head>
+
+<body>
+   <header class="header">
+      <img class="logo" src="{{ url_for('static', filename='images/logo.png') }}" height="30px"></img>
+      <input type="text" class="search-bar" placeholder="Rechercher un produit...">
+      <button class="search-btn">Rechercher</button>
+   </header>
+
+   <main class="content">
+      <section class="categories"></section>
+      <section class="products"></section>
+      <section class="analitics">
+         {% include "elements/analytics.html" %}
+      </section>
+   </main>
 </body>
 
+<!-- Custom JS -->
 <script src="{{ url_for('static', filename='js/layout.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tracker.js') }}" type="module"></script>
+<!-- Plotly JS -->
+<script src="https://cdn.plot.ly/plotly-3.1.0.min.js"></script>
 
 </html>

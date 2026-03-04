@@ -1,4 +1,6 @@
-import { InputTracker } from './modules/input_tracker.js';
+import { InputTracker } from './modules/inputTracker.js';
+import { drawTrackPlot } from './modules/mouseTrackPlot.js';
+import { drawSpeedPlot } from './modules/mouseSpeedPlot.js';
 
 const inputTracker = new InputTracker()
 
@@ -10,9 +12,16 @@ function trackInputs() {
     setInterval(async () => {
         const stats = inputTracker.computeFeatures();
         inputTracker.reset();
+        
+        document.dispatchEvent(new CustomEvent('inputTrackerReset', {
+            bubbles: true,
+            cancelable: false
+        }))
+
         if (!stats) {
             return
         }
+
         console.log(stats);
         // Send stats to python
         const response = await fetch('ajax/track_inputs', {
@@ -28,4 +37,11 @@ function trackInputs() {
 }
 
 
+
+
+// Render analytics plots
+drawTrackPlot();
+drawSpeedPlot();
+
+// Track user inputs
 trackInputs();

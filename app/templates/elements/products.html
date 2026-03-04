@@ -16,6 +16,9 @@
 <form class="pagination">
     <button class="pagination-btn prev" value="{{ page -1 }}" {% if page == 1 %}disabled{% endif %}>Préc.</button>
     <div class="pagination-pages">
+        {% if page > 1 %}
+            <button class="page-number" value="{{ page - 1 }}">{{ page - 1 }}</button>
+        {% endif %}
         <button class="page-number active" value="{{ page }}">{{ page }}</button>
         {% if max_page - page >= 1 %}
             <button class="page-number" value="{{ page + 1 }}">{{ page + 1 }}</button>
@@ -23,8 +26,8 @@
         {% if max_page - page >= 2 %}
             <button class="page-number" value="{{ page + 2 }}">{{ page + 2 }}</button>
         {% endif %}
-        <span class="ellipsis">...</span>
-        {% if page != max_page %}
+        {% if page < max_page - 2 %}
+            <span class="ellipsis">...</span>
             <button class="page-number" value="{{ max_page }}">{{ max_page }}</button>
         {% endif %}
     </div>

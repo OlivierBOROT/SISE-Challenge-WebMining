@@ -1,0 +1,163 @@
+.analitics {
+    width: 20rem;
+    background-color: white;
+    border-left: solid 1px rgb(187, 187, 187);
+    margin-left: 20px;
+    position: sticky;
+    top: 0px;
+    background-color: white;
+    padding: 10px;
+    box-sizing: border-box;
+    height: 100vh;
+}
+
+.prediction {
+    height: 60px;
+    width: 100%;
+    border: solid 1px rgb(213, 219, 219);
+    background: #fafafa;
+    margin-top: 10px;
+}
+
+.graph {
+    width: 100%;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 10px;
+}
+
+.widget {
+    width: 100%;
+    background: #fff;
+    border: 1px solid #e2e5ea;
+    border-radius: 4px;
+    padding: 12px;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+.widget-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.widget-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #232f3e;
+}
+
+.live-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: #888;
+}
+
+.live-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: widget-blink 1.6s ease-in-out infinite;
+}
+
+@keyframes widget-blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
+
+.widget canvas {
+    display: block;
+    width: 100%;
+    border-radius: 3px;
+    background: #f7f8fa;
+    border: 1px solid #e2e5ea;
+}
+
+.stats-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    gap: 6px;
+}
+
+.stat-box {
+    flex: 1;
+    text-align: center;
+    padding: 6px 4px;
+    border-top: 2px solid #e2e5ea;
+}
+
+.stat-val {
+    font-size: 13px;
+    font-weight: 700;
+    color: #232f3e;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+.stat-lbl {
+    font-size: 9px;
+    color: #999;
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+
+
+/* ══════════════════════════════════════
+     Per-widget overrides
+     ══════════════════════════════════════ */
+
+/* Trail canvas — crisp pixel rendering */
+.mouse-track canvas {
+    image-rendering: crisp-edges;
+}
+
+/* Heatmap canvas — crosshair cursor */
+.mouse-click canvas {
+    cursor: crosshair;
+}
+
+/* Heatmap legend */
+.legend {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 7px;
+}
+
+.legend-bar {
+    flex: 1;
+    height: 5px;
+    border-radius: 3px;
+    background: linear-gradient(to right, rgba(240, 192, 64, 0.15), #e47911);
+}
+
+.legend-lbl {
+    font-size: 9px;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+}
+
+/* Separator between stacked widgets */
+.graph .widget+.widget {
+    margin-top: 10px;
+}

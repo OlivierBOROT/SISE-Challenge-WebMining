@@ -30,6 +30,7 @@ def create_app() -> Flask:
 
     # Instantiate services in app context
     with app.app_context():
+        app.debug = False
         app.product_data = ProductData()            # type: ignore
         app.storage_service = StorageService()      # type: ignore
         app.feature_service = FeatureService()      # type: ignore

@@ -86,5 +86,5 @@ def track_inputs():
 
     feature_set = app.feature_service.extract(behaviour_batch)
     app.storage_service.append(feature_set)
-    
+
     return jsonify({"success": True})
