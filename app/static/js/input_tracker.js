@@ -87,7 +87,7 @@ function _histogram(arr, nBins) {
 
 /* ═══════════ Classe BehaviorTracker ═══════════ */
 
-class BehaviorTracker {
+class InputTracker {
     /**
      * @param {object} [opts]
      * @param {string} [opts.sessionId]  Identifiant de session (UUID ou autre).
@@ -442,6 +442,3 @@ class BehaviorTracker {
     /** Alias sémantique de computeFeatures(). */
     computeBatch() { return this.computeFeatures(); }
 }
-
-// Alias rétrocompatibilité
-const MouseTracker = BehaviorTracker;
