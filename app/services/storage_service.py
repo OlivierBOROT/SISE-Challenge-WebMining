@@ -3,7 +3,8 @@ Storage Service
 Persists FeatureSet records to disk for offline model training.
 
 Write path (called at inference time):
-    append(feature_set)  →  data/features.jsonl   (one JSON line per batch)
+    append(feature_set, source='production')  →  data/features.jsonl
+    Each record includes metadata for versioning and future migration.
 
 Read path (called at training time):
     load_feature_sets()  →  list[FeatureSet]
@@ -11,12 +12,21 @@ Read path (called at training time):
 
 Snapshot path (optional — freeze a clean Parquet file before retraining):
     export_parquet()     →  data/features.parquet
+
+Metadata Design:
+    Each record in JSONL includes:
+    - session_id, page, batch_t, features, vector (core data)
+    - schema_version, feature_version (for versioning)
+    - stored_at (ISO timestamp for ordering)
+    - source (e.g., 'poc', 'production') for separating data origins
+    - metadata (optional dict for arbitrary tracking)
 """
 
 from __future__ import annotations
 
 import json
 from dataclasses import asdict
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -36,14 +46,30 @@ PARQUET_PATH   = _DATA_DIR / "features.parquet"
 # Write — called during inference
 # ─────────────────────────────────────────────────────────────────────────────
 
-def append(feature_set: FeatureSet) -> None:
+def append(
+    feature_set: FeatureSet,
+    source: str = "production",
+    schema_version: str = "1.0",
+    feature_version: str = "1.0",
+) -> None:
     """
-    Append a single FeatureSet to the JSONL store.
+    Append a single FeatureSet to the JSONL store with metadata.
     Creates the file (and data/ dir) if they don't exist.
     One line = one batch = one training sample.
+
+    Args:
+        feature_set: FeatureSet to persist
+        source: Data origin ('poc' for POC collection, 'production' for real inference)
+        schema_version: Storage schema version (for future migrations)
+        feature_version: Feature extraction schema version
     """
     _DATA_DIR.mkdir(parents=True, exist_ok=True)
-    row = asdict(feature_set)   # {session_id, page, batch_t, features, vector}
+    row = asdict(feature_set)
+    # Add versioning and metadata
+    row["source"] = source
+    row["schema_version"] = schema_version
+    row["feature_version"] = feature_version
+    row["stored_at"] = datetime.utcnow().isoformat()
     with JSONL_PATH.open("a", encoding="utf-8") as f:
         f.write(json.dumps(row) + "\n")
 
@@ -52,10 +78,14 @@ def append(feature_set: FeatureSet) -> None:
 # Read — called during training
 # ─────────────────────────────────────────────────────────────────────────────
 
-def load_feature_sets(path: Path = JSONL_PATH) -> list[FeatureSet]:
+def load_feature_sets(path: Path = JSONL_PATH, source: str = None) -> list[FeatureSet]:
     """
     Read all stored records back as FeatureSet objects.
     Skips malformed lines with a warning instead of crashing.
+
+    Args:
+        path: Path to JSONL file
+        source: Filter by source ('poc', 'production', or None for all)
     """
     if not path.exists():
         return []
@@ -68,6 +98,9 @@ def load_feature_sets(path: Path = JSONL_PATH) -> list[FeatureSet]:
                 continue
             try:
                 row = json.loads(line)
+                # Filter by source if specified
+                if source and row.get("source") != source:
+                    continue
                 results.append(
                     FeatureSet(
                         session_id=row["session_id"],
@@ -83,12 +116,16 @@ def load_feature_sets(path: Path = JSONL_PATH) -> list[FeatureSet]:
     return results
 
 
-def load_numpy(path: Path = JSONL_PATH) -> np.ndarray:
+def load_numpy(path: Path = JSONL_PATH, source: str = None) -> np.ndarray:
     """
     Load all stored feature vectors as a numpy array of shape (N, N_FEATURES).
     Column order is guaranteed to match FEATURE_COLUMNS.
+
+    Args:
+        path: Path to JSONL file
+        source: Filter by source ('poc', 'production', or None for all)
     """
-    feature_sets = load_feature_sets(path)
+    feature_sets = load_feature_sets(path, source=source)
     if not feature_sets:
         return np.empty((0, len(FEATURE_COLUMNS)), dtype=float)
 
