@@ -1,11 +1,11 @@
-from .mouse_behavior_schema import (
-    MovementMetrics,
+from .behavior_schema import (
     ClickMetrics,
-    ScrollMetrics,
-    HeuristicMetrics,
     FormMetrics,
-    NavigationMetrics,
+    HeuristicMetrics,
     MouseBehaviorBatch,
+    MovementMetrics,
+    NavigationMetrics,
+    ScrollMetrics,
 )
 
 __all__ = [
