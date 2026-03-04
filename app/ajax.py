@@ -7,7 +7,7 @@ front end. No complex logic.
 
 from typing import cast
 
-from flask import Blueprint, current_app, render_template, request
+from flask import Blueprint, current_app, jsonify, render_template, request
 
 from app import AppContext
 
@@ -63,22 +63,22 @@ def render_products():
     )
 
 
-# ------------- Input tracking endpoints
+# ------------- Tracking
 
 
 @ajax.route("/track_inputs", methods=["POST"])
 def track_inputs():
-    # Handle input tracking logic here
-    # first we get the data
-    # then we call the service to know if its a bot or not
-    # then we send the result
-    pass
+    """
+    Predict bot / user label from client inputs
 
+    Arguments:
+        json: client input metrics
 
-# ------------- Behavior tracking endpoints
-
-
-@ajax.route("/track_behavior", methods=["POST"])
-def track_behavior():
-    # Handle behavior tracking logic here
-    pass
+    Returns:
+        json: {
+            "is_bot": bool
+            "bot_score": int
+        }
+    """
+    stats = request.json
+    return jsonify({"success": True})

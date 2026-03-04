@@ -40,7 +40,7 @@ def main():
 
     app = create_app()
     # For now we only print status; run the server in dev to inspect
-    app.run(debug=debug, port=5000)
+    app.run(debug=debug, port=8000)
 
 
 if __name__ == "__main__":
