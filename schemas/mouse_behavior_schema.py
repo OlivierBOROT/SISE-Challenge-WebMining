@@ -1,7 +1,13 @@
+"""
+Schema definitions for mouse behavior features used in bot detection.
+"""
+
 from pydantic import BaseModel
 
 
 class MovementMetrics(BaseModel):
+    """Metrics related to mouse movement events."""
+
     total_move_events: int
     move_event_rate_hz: float  # events/sec
 
@@ -33,6 +39,8 @@ class MovementMetrics(BaseModel):
 
 
 class ClickMetrics(BaseModel):
+    """Metrics related to click events."""
+
     total_click_events: int
 
     left_click_count: int
@@ -54,6 +62,8 @@ class ClickMetrics(BaseModel):
 
 
 class ScrollMetrics(BaseModel):
+    """Metrics related to scroll events."""
+
     total_scroll_events: int
     scroll_event_rate_hz: float
 
@@ -67,6 +77,8 @@ class ScrollMetrics(BaseModel):
 
 
 class HeuristicMetrics(BaseModel):
+    """Hand-crafted heuristics that may indicate bot-like behavior."""
+
     constant_speed_ratio: float
     linear_movement_ratio: float
     perfect_straight_lines_count: int
@@ -77,6 +89,8 @@ class HeuristicMetrics(BaseModel):
 
 
 class MouseBehaviorFeatures(BaseModel):
+    """Computed features from a batch of mouse events, to be sent from the front-end for bot detection."""
+
     session_start_ts: int
     elapsed_since_session_start_sec: float
     capture_duration_sec: float
