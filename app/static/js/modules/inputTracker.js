@@ -221,12 +221,52 @@ export class InputTracker {
     computeFeatures() {
         const mv = this.moves;
         const n  = mv.length;
-        if (n < 3) return null;
-
-        const diag  = Math.hypot(window.innerWidth, window.innerHeight);
-        const viewH = window.innerHeight;
         // elapsed: temps écoulé depuis le début de la session globale (page load)
         const elapsed = (Date.now() - this.sessionStart) / 1000;
+
+        // Clicks, scroll and form do not require mouse movement — compute them
+        // unconditionally so zero-movement batches still carry their signals.
+        const clicks = this._computeClicks();
+        const scroll = this._computeScroll(elapsed);
+        const form   = this._computeForm();
+
+        // A batch with fewer than 3 mouse events cannot yield path statistics,
+        // but zero movement IS itself a strong bot indicator, and idle human moments
+        // deserve to be captured too. Return zeroed movement/heuristics alongside
+        // the real clicks/scroll/form data instead of dropping the batch.
+        if (n < 3) {
+            return {
+                session_id: this.sessionId,
+                page:       window.location.pathname,
+                batch_t:    Date.now() - this.sessionStart,
+                movement: {
+                    total_move_events: n,       move_event_rate_hz: 0,
+                    mean_delta_time_sec: 0,     std_delta_time_sec: 0,
+                    min_delta_time_sec: 0,      max_delta_time_sec: 0,
+                    total_distance_rel: 0,      net_displacement_rel: 0,
+                    path_efficiency_ratio: 0,
+                    mean_speed_rel: 0,          std_speed_rel: 0,
+                    max_speed_rel: 0,           min_speed_rel: 0,
+                    mean_acceleration_rel: 0,   std_acceleration_rel: 0,
+                    max_acceleration_rel: 0,
+                    mean_turning_angle_rad: 0,  std_turning_angle_rad: 0,
+                    direction_changes_count: 0,
+                    micro_movements_ratio: 0,   zero_delta_ratio: 0,
+                    jitter_index: 0,
+                },
+                clicks,
+                scroll,
+                heuristics: {
+                    constant_speed_ratio: 0,         linear_movement_ratio: 0,
+                    perfect_straight_lines_count: 0, teleport_event_count: 0,
+                    event_uniformity_score: 0,       entropy_direction: 0,
+                    entropy_speed: 0,
+                },
+                form,
+            };
+        }
+
+        const diag  = Math.hypot(window.innerWidth, window.innerHeight);
 
         /* ───── Deltas inter-événements (secondes) & distances (px) ───── */
         const dts   = [];
@@ -294,90 +334,9 @@ export class InputTracker {
             jitter_index:            _mean(dists) > 0 ? _stddev(dists) / _mean(dists) : 0,
         };
 
-        /* ═════ CLICKS ═════ */
-        const cl = this.clicks;
-        let leftCount = 0, rightCount = 0, midCount = 0;
-        for (const c of cl) {
-            if (c.btn === 0) leftCount++;
-            else if (c.btn === 2) rightCount++;
-            else if (c.btn === 1) midCount++;
-        }
+        // clicks already computed above (before movement guard)
 
-        const clickInts = [];
-        for (let i = 1; i < cl.length; i++) clickInts.push((cl[i].t - cl[i - 1].t) / 1000);
-
-        // Double-clics : deux clics gauche consécutifs < 300 ms
-        const leftClicks = cl.filter(c => c.btn === 0);
-        let doubleClicks = 0;
-        for (let i = 1; i < leftClicks.length; i++) {
-            if ((leftClicks[i].t - leftClicks[i - 1].t) < 300) doubleClicks++;
-        }
-
-        // Durées de maintien (secondes)
-        const holds = this.clickHolds.map(h => h / 1000);
-
-        // Rafales rapides : ≥ 3 clics en < 500 ms
-        let rapidBursts = 0;
-        for (let i = 0; i < cl.length; i++) {
-            let j = i + 1;
-            while (j < cl.length && (cl[j].t - cl[i].t) < 500) j++;
-            if (j - i >= 3) { rapidBursts++; i = j - 1; }
-        }
-
-        // Ratio d'intervalles identiques (tolérance 5 ms)
-        let identicalCount = 0;
-        for (let i = 1; i < clickInts.length; i++) {
-            if (Math.abs(clickInts[i] - clickInts[i - 1]) < 0.005) identicalCount++;
-        }
-
-        const clicks = {
-            total_click_events:        cl.length,
-            left_click_count:          leftCount,
-            right_click_count:         rightCount,
-            middle_click_count:        midCount,
-            double_click_count:        doubleClicks,
-            mean_click_interval_sec:   _mean(clickInts),
-            std_click_interval_sec:    _stddev(clickInts),
-            min_click_interval_sec:    _min(clickInts),
-            max_click_interval_sec:    _max(clickInts),
-            mean_click_hold_sec:       _mean(holds),
-            std_click_hold_sec:        _stddev(holds),
-            max_click_hold_sec:        _max(holds),
-            rapid_click_burst_count:   rapidBursts,
-            identical_interval_ratio:  clickInts.length >= 2
-                ? identicalCount / (clickInts.length - 1) : 0,
-        };
-
-        /* ═════ SCROLL ═════ */
-        const sc = this.scrolls;
-        const scrollDeltasRel = [];
-        for (const s of sc) scrollDeltasRel.push(Math.abs(s.dy) / viewH);
-
-        const scrollInts = [];
-        for (let i = 1; i < sc.length; i++) scrollInts.push((sc[i].t - sc[i - 1].t) / 1000);
-
-        let scrollDirChanges = 0;
-        for (let i = 1; i < sc.length; i++) {
-            if (sc[i].dy * sc[i - 1].dy < 0) scrollDirChanges++;
-        }
-
-        let contSequences = 0, inSeq = false;
-        for (let i = 1; i < sc.length; i++) {
-            if ((sc[i].t - sc[i - 1].t) < 200) {
-                if (!inSeq) { contSequences++; inSeq = true; }
-            } else { inSeq = false; }
-        }
-
-        const scroll = {
-            total_scroll_events:          sc.length,
-            scroll_event_rate_hz:         elapsed > 0 ? sc.length / elapsed : 0,
-            mean_scroll_delta_rel:        _mean(scrollDeltasRel),
-            std_scroll_delta_rel:         _stddev(scrollDeltasRel),
-            max_scroll_delta_rel:         _max(scrollDeltasRel),
-            scroll_direction_changes:     scrollDirChanges,
-            continuous_scroll_sequences:  contSequences,
-            mean_scroll_interval_sec:     _mean(scrollInts),
-        };
+        // scroll already computed above (before movement guard)
 
         /* ═════ HEURISTIQUES ═════ */
         const meanSpd = _mean(speeds);
@@ -424,7 +383,7 @@ export class InputTracker {
             entropy_speed:                _entropy(_histogram(speeds, 10)),
         };
 
-        const form = this._computeForm();
+        // form already computed above (before movement guard)
 
         /* ═════ RÉSULTAT — conforme à MouseBehaviorBatch ═════ */
         return {
@@ -436,6 +395,82 @@ export class InputTracker {
             scroll,
             heuristics,
             form,
+        };
+    }
+
+    /** Computes click features from this.clicks. */
+    _computeClicks() {
+        const cl = this.clicks;
+        let leftCount = 0, rightCount = 0, midCount = 0;
+        for (const c of cl) {
+            if (c.btn === 0) leftCount++;
+            else if (c.btn === 2) rightCount++;
+            else if (c.btn === 1) midCount++;
+        }
+        const clickInts = [];
+        for (let i = 1; i < cl.length; i++) clickInts.push((cl[i].t - cl[i - 1].t) / 1000);
+        const leftClicks = cl.filter(c => c.btn === 0);
+        let doubleClicks = 0;
+        for (let i = 1; i < leftClicks.length; i++) {
+            if ((leftClicks[i].t - leftClicks[i - 1].t) < 300) doubleClicks++;
+        }
+        const holds = this.clickHolds.map(h => h / 1000);
+        let rapidBursts = 0;
+        for (let i = 0; i < cl.length; i++) {
+            let j = i + 1;
+            while (j < cl.length && (cl[j].t - cl[i].t) < 500) j++;
+            if (j - i >= 3) { rapidBursts++; i = j - 1; }
+        }
+        let identicalCount = 0;
+        for (let i = 1; i < clickInts.length; i++) {
+            if (Math.abs(clickInts[i] - clickInts[i - 1]) < 0.005) identicalCount++;
+        }
+        return {
+            total_click_events:        cl.length,
+            left_click_count:          leftCount,
+            right_click_count:         rightCount,
+            middle_click_count:        midCount,
+            double_click_count:        doubleClicks,
+            mean_click_interval_sec:   _mean(clickInts),
+            std_click_interval_sec:    _stddev(clickInts),
+            min_click_interval_sec:    _min(clickInts),
+            max_click_interval_sec:    _max(clickInts),
+            mean_click_hold_sec:       _mean(holds),
+            std_click_hold_sec:        _stddev(holds),
+            max_click_hold_sec:        _max(holds),
+            rapid_click_burst_count:   rapidBursts,
+            identical_interval_ratio:  clickInts.length >= 2
+                ? identicalCount / (clickInts.length - 1) : 0,
+        };
+    }
+
+    /** Computes scroll features from this.scrolls. */
+    _computeScroll(elapsed) {
+        const sc    = this.scrolls;
+        const viewH = window.innerHeight;
+        const scrollDeltasRel = [];
+        for (const s of sc) scrollDeltasRel.push(Math.abs(s.dy) / viewH);
+        const scrollInts = [];
+        for (let i = 1; i < sc.length; i++) scrollInts.push((sc[i].t - sc[i - 1].t) / 1000);
+        let scrollDirChanges = 0;
+        for (let i = 1; i < sc.length; i++) {
+            if (sc[i].dy * sc[i - 1].dy < 0) scrollDirChanges++;
+        }
+        let contSequences = 0, inSeq = false;
+        for (let i = 1; i < sc.length; i++) {
+            if ((sc[i].t - sc[i - 1].t) < 200) {
+                if (!inSeq) { contSequences++; inSeq = true; }
+            } else { inSeq = false; }
+        }
+        return {
+            total_scroll_events:          sc.length,
+            scroll_event_rate_hz:         elapsed > 0 ? sc.length / elapsed : 0,
+            mean_scroll_delta_rel:        _mean(scrollDeltasRel),
+            std_scroll_delta_rel:         _stddev(scrollDeltasRel),
+            max_scroll_delta_rel:         _max(scrollDeltasRel),
+            scroll_direction_changes:     scrollDirChanges,
+            continuous_scroll_sequences:  contSequences,
+            mean_scroll_interval_sec:     _mean(scrollInts),
         };
     }
 

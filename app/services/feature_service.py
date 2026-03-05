@@ -4,10 +4,15 @@ Receives a validated MouseBehaviorBatch and produces a normalized feature
 vector ready to be passed to the ML model.
 """
 
+import logging
 import math
-import numpy as np
 from dataclasses import dataclass
+
+import numpy as np
+
 from app.schemas import MouseBehaviorBatch
+
+logger = logging.getLogger(__name__)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -184,3 +189,12 @@ class FeatureService:
 
         score = weighted_sum / total_weight
         return round(min(1.0, score), 4), triggered
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Module-level utility functions (for use by other services)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def to_numpy(feature_set: FeatureSet) -> np.ndarray:
+    """Convert FeatureSet vector to 2D numpy array for scikit-learn models."""
+    return np.array(feature_set.vector, dtype=float).reshape(1, -1)

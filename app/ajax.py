@@ -12,8 +12,6 @@ from flask import Blueprint, current_app, jsonify, render_template, request
 from app import AppContext
 from app.schemas import MouseBehaviorBatch
 
-# Cast app_context typing
-app = cast(AppContext, current_app)
 # Create blueprint
 ajax = Blueprint("ajax", __name__)
 
@@ -29,6 +27,7 @@ def render_categories():
     Returns:
         HTML: Categories menu section
     """
+    app = cast(AppContext, current_app)
     categories = app.product_data.get_available_categories()
     return render_template("elements/categories.html", categories=categories)
 
@@ -45,6 +44,7 @@ def render_products():
     Returns:
         html: Product result section
     """
+    app = cast(AppContext, current_app)
     category = request.args.get("category", "all")
     query = request.args.get("query")
     page = request.args.get("page", 0, type=int)
@@ -84,10 +84,12 @@ def track_inputs():
             "bot_score": int
         }
     """
-    stats = request.json
+    app = cast(AppContext, current_app)
+    stats = dict(request.json)  # type: ignore
+    source = stats.pop("_source", "human")  # injected by bots; defaults to human
     behaviour_batch = MouseBehaviorBatch(**stats)
 
     feature_set = app.feature_service.extract(behaviour_batch)
-    app.storage_service.append(feature_set)
+    app.storage_service.append(feature_set, source=source)
 
     return jsonify({"success": True})
