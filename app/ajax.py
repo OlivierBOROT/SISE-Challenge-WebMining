@@ -89,6 +89,7 @@ def track_inputs():
         }
     """
     data = request.get_json(force=True)
+    print(data, flush=True)
     session_id: str = data.get("session_id")
     stats: dict = data.get("stats")
 

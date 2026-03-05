@@ -241,6 +241,82 @@ export class InputTracker {
         };
     }
 
+    /** Computes click features from this.clicks. */
+    _computeClicks() {
+        const cl = this.clicks;
+        let leftCount = 0, rightCount = 0, midCount = 0;
+        for (const c of cl) {
+            if (c.btn === 0) leftCount++;
+            else if (c.btn === 2) rightCount++;
+            else if (c.btn === 1) midCount++;
+        }
+        const clickInts = [];
+        for (let i = 1; i < cl.length; i++) clickInts.push((cl[i].t - cl[i - 1].t) / 1000);
+        const leftClicks = cl.filter(c => c.btn === 0);
+        let doubleClicks = 0;
+        for (let i = 1; i < leftClicks.length; i++) {
+            if ((leftClicks[i].t - leftClicks[i - 1].t) < 300) doubleClicks++;
+        }
+        const holds = this.clickHolds.map(h => h / 1000);
+        let rapidBursts = 0;
+        for (let i = 0; i < cl.length; i++) {
+            let j = i + 1;
+            while (j < cl.length && (cl[j].t - cl[i].t) < 500) j++;
+            if (j - i >= 3) { rapidBursts++; i = j - 1; }
+        }
+        let identicalCount = 0;
+        for (let i = 1; i < clickInts.length; i++) {
+            if (Math.abs(clickInts[i] - clickInts[i - 1]) < 0.005) identicalCount++;
+        }
+        return {
+            total_click_events:        cl.length,
+            left_click_count:          leftCount,
+            right_click_count:         rightCount,
+            middle_click_count:        midCount,
+            double_click_count:        doubleClicks,
+            mean_click_interval_sec:   _mean(clickInts),
+            std_click_interval_sec:    _stddev(clickInts),
+            min_click_interval_sec:    _min(clickInts),
+            max_click_interval_sec:    _max(clickInts),
+            mean_click_hold_sec:       _mean(holds),
+            std_click_hold_sec:        _stddev(holds),
+            max_click_hold_sec:        _max(holds),
+            rapid_click_burst_count:   rapidBursts,
+            identical_interval_ratio:  clickInts.length >= 2
+                ? identicalCount / (clickInts.length - 1) : 0,
+        };
+    }
+
+    /** Computes scroll features from this.scrolls. */
+    _computeScroll(elapsed) {
+        const sc    = this.scrolls;
+        const viewH = window.innerHeight;
+        const scrollDeltasRel = [];
+        for (const s of sc) scrollDeltasRel.push(Math.abs(s.dy) / viewH);
+        const scrollInts = [];
+        for (let i = 1; i < sc.length; i++) scrollInts.push((sc[i].t - sc[i - 1].t) / 1000);
+        let scrollDirChanges = 0;
+        for (let i = 1; i < sc.length; i++) {
+            if (sc[i].dy * sc[i - 1].dy < 0) scrollDirChanges++;
+        }
+        let contSequences = 0, inSeq = false;
+        for (let i = 1; i < sc.length; i++) {
+            if ((sc[i].t - sc[i - 1].t) < 200) {
+                if (!inSeq) { contSequences++; inSeq = true; }
+            } else { inSeq = false; }
+        }
+        return {
+            total_scroll_events:          sc.length,
+            scroll_event_rate_hz:         elapsed > 0 ? sc.length / elapsed : 0,
+            mean_scroll_delta_rel:        _mean(scrollDeltasRel),
+            std_scroll_delta_rel:         _stddev(scrollDeltasRel),
+            max_scroll_delta_rel:         _max(scrollDeltasRel),
+            scroll_direction_changes:     scrollDirChanges,
+            continuous_scroll_sequences:  contSequences,
+            mean_scroll_interval_sec:     _mean(scrollInts),
+        };
+    }
+
     computeFeatures() {
         const mv = this.moves;
         const n  = mv.length;

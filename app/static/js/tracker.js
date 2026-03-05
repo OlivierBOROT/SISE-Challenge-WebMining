@@ -31,12 +31,11 @@ function trackInputs() {
             cancelable: false
         }))
 
-        if (!stats) {
-            return
+        if (stats === null || stats === undefined) {
+            return;
         }
-        
+
         // Attach optional source label injected externally (e.g. by Selenium bots)
-        const payload = { ...stats, _source: window.__TRACKER_SOURCE__ || 'human' };
         // Send stats to python
         const response = await fetch('ajax/track_inputs', {
             method: 'POST',
@@ -44,7 +43,7 @@ function trackInputs() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                stats: payload,
+                stats: stats,
                 session_id: getCookie('session_id')
             })
         })
