@@ -1,43 +1,14 @@
-"""Entry point for running the app with simple CLI flags.
+"""Entry point for running the app (simplified).
 
-Usage examples:
-  python run.py --dev -f data/live.db
-  python run.py --prod
-  python run.py            # defaults to production
+This module no longer parses CLI flags; it simply creates the Flask app
+and runs it on port 8000. Adjust `create_app()` or use a WSGI server
+for production deployments.
 """
-
-import argparse
 
 from app import create_app
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Run the web app with environment flags"
-    )
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("--dev", action="store_true", help="Run in development mode")
-    group.add_argument("--prod", action="store_true", help="Run in production mode")
-    parser.add_argument(
-        "-f", "--file", dest="data_file", help="Path to data file for runtime storage"
-    )
-    args = parser.parse_args()
-
-    # Mode selection
-    if args.dev:
-        print("dev lancé")
-        debug = True
-    else:
-        # --prod or default
-        print("prod lancé")
-        debug = False
-
-    # Data file info
-    if args.data_file:
-        print(f"Data file: {args.data_file}")
-    else:
-        print("No data file provided")
-
     app = create_app()
     # For now we only print status; run the server in dev to inspect
     app.run(debug=True, port=8000)

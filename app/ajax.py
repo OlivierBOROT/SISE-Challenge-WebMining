@@ -4,21 +4,22 @@ AJAX endpoints
 Only design here function designed to be called from
 front end. No complex logic.
 """
-
 from typing import cast
 
 from flask import Blueprint, current_app, jsonify, render_template, request
 
 from app import AppContext
-from app.schemas import MouseBehaviorBatch
+
+# Use BehaviorService via app.behavior_service (do not import FeatureBuilder here)
+from app.schemas import MouseBehaviorBatch, UserEvents
 
 app = cast(AppContext, current_app)
 # Create blueprint
 ajax = Blueprint("ajax", __name__)
 
 
-
 # ------------- Render templates
+
 
 @ajax.route("/render_categories")
 def render_categories():
@@ -69,6 +70,7 @@ def render_products():
 
 # ------------- Tracking
 
+
 @ajax.route("/track_inputs", methods=["POST"])
 def track_inputs():
     """
@@ -91,10 +93,37 @@ def track_inputs():
     stats: dict = data.get('stats', {})
     source: str = stats.pop('_source', 'human')
 
+    print('mouse_behaviour', stats, flush=True)
     behaviour_batch = MouseBehaviorBatch(**stats)
     result = app.user_service.predict_bot(behaviour_batch, session_id, source=source)
 
     return jsonify({
         "label": result.label,
         "score": result.score
+    })
+
+
+@ajax.route("/track_events", methods=["POST"])
+def track_events():
+    """
+    Receive user interaction events (product, category, page) from
+    the EventTracker JS module and build features via FeatureBuilder.
+
+    Arguments:
+        json: UserEvents payload { user_id, events[] }
+
+    Returns:
+        json: { features: dict, user_id: str }
+    """
+    data = request.get_json(force=True)
+    session_id: str = data.get("session_id")
+    events: dict = data.get("events")
+
+    user_events = UserEvents(**events)
+    result = app.user_service.predict_behaviour(user_events, session_id)
+
+    print("results", flush=True)
+    print(result, flush=True)
+    return jsonify({
+        "label": result
     })

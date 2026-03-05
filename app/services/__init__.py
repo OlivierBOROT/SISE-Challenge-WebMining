@@ -1,4 +1,3 @@
-from app.services.behavior_service import BehaviorService
 from app.services.product_data import ProductData
 from app.services.user_service import UserService
 
@@ -6,9 +5,8 @@ from app.services.user_service import UserService
 from app.utility import DataConnector, StorageService
 
 __all__ = [
-    "BehaviorService",
     "DataConnector",
     "ProductData",
     "StorageService",
-    "UserService"
+    "UserService",
 ]

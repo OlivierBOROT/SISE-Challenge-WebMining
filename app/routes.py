@@ -28,10 +28,6 @@ def home():
     resp.set_cookie('session_id', session.id, httponly=False)
     resp.headers["X-Session-ID"] = session.id
 
-    #TODO: we need to create a session ID on page load. Each session is stored in a UserSession service, 
-    # it contains the inputs metrics and behaviour events nedded to predict on the models.
-    # We also use the session ID to be able to request the session stats from api. It allows people to try and break the bot detection
-
     return resp
 
 @main.route('/session/<session_id>')
