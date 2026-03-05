@@ -380,7 +380,7 @@ class InputModelManager:
 
         X = to_numpy(feature_set)
         anomaly: int = int(model.predict(X)[0])
-        score: float = float(model.decision_function(X)[0])
+        score: float = (float(model.decision_function(X)[0]) + 1) / 2
 
         label = "human" if anomaly == 1 else "bot"
         divisor = _CONF_DIVISOR[cfg.model_type]

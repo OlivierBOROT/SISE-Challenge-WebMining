@@ -47,8 +47,8 @@ function trackInputs() {
                 session_id: getCookie('session_id')
             })
         })
-        const content = await response.json();
-        // TODO: display result: {is_bot: bool, bot_score: float}
+        const result = await response.json();
+        console.log(result);
     }, 1000);
 }
 
@@ -76,7 +76,7 @@ function trackEvents() {
         });
         const result = await response.json();
         // Response handling (kept minimal)
-        console.log('RESPONSE ajax/track_events', { ok: response.ok, status: response.status });
+        console.log(result);
     }, 1000);
 }
 

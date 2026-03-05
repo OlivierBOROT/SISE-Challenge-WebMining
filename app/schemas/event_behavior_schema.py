@@ -76,12 +76,15 @@ class UserEvents(BaseModel):
         window_events = []
         for e in sorted_events:
             ts = datetime.fromtimestamp(e.timestamp)
-            difference = (ts - most_recent).total_seconds()
+            difference = (most_recent - ts).total_seconds()
 
-            if difference <= 10:
+            if difference <= duration:
+                print('success')
+                window_events.append(e)
+            else:
                 return window_events
             
-            window_events.append(e)
+            
 
         return None
             
