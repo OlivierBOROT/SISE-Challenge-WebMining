@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, confloat, conint
 # ----------------------------
 class BaseEvent(BaseModel):
     timestamp: float = Field(..., description="Unix timestamp de l'événement")
-    object: Literal["product", "category", "page"] = Field(
+    object: Literal["product", "category", "page", "scroll"] = Field(
         ..., description="Type d'objet"
     )
 
@@ -18,11 +18,12 @@ class BaseEvent(BaseModel):
 # ----------------------------
 class ProductEvent(BaseEvent):
     object: Literal["product"]
-    category: str
-    product_name: str
-    price: confloat(ge=0)
-    time_spent: confloat(ge=0)
-    event_type: Literal["hover", "click", "achat"]
+    # Only validate product identifier, event type and time spent
+    product_id: str = Field(..., description="ID du produit (data-id)")
+    event_type: Literal["hover", "click", "achat"] = Field(
+        ..., description="Type d'événement produit"
+    )
+    time_spent: confloat(ge=0) = Field(..., description="Temps passé (secondes)")
 
 
 # ----------------------------
@@ -30,9 +31,12 @@ class ProductEvent(BaseEvent):
 # ----------------------------
 class CategoryEvent(BaseEvent):
     object: Literal["category"]
-    category_name: str
-    time_spent: confloat(ge=0)
-    event_type: Literal["hover", "click"]
+    # Only validate category identifier, event type and time spent
+    category_id: str = Field(..., description="ID de la catégorie (data-id)")
+    event_type: Literal["hover", "click"] = Field(
+        ..., description="Type d'événement catégorie"
+    )
+    time_spent: confloat(ge=0) = Field(..., description="Temps passé (secondes)")
 
 
 # ----------------------------
@@ -43,9 +47,17 @@ class PageEvent(BaseEvent):
     page_num: conint(ge=1)
 
 
+class ScrollEvent(BaseEvent):
+    object: Literal["scroll"]
+    delta_y: float = Field(..., description="Delta Y du scroll (px)")
+    scroll_position: float = Field(
+        ..., description="Position de scroll normalisée (0.0-1.0)"
+    )
+
+
 # ----------------------------
 # Wrapper pour les événements utilisateur
 # ----------------------------
 class UserEvents(BaseModel):
     user_id: str
-    events: List[Union[ProductEvent, CategoryEvent, PageEvent]]
+    events: List[Union[ProductEvent, CategoryEvent, PageEvent, ScrollEvent]]

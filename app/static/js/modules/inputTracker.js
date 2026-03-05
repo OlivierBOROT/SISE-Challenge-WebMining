@@ -120,6 +120,10 @@ export class InputTracker {
         this._onWheel  = this._handleWheel.bind(this);
         this._onFocusIn  = this._handleFocusIn.bind(this);
         this._onFocusOut = this._handleFocusOut.bind(this);
+        this._onPageClick = this._handlePageClick.bind(this);
+        this._onPaginationMut = this._handlePaginationMutation.bind(this);
+        this._paginationObserver = null;
+        this._lastPage = window.__currentProductPage ?? null;
     }
 
     /* ── Cycle de vie ── */
@@ -131,6 +135,20 @@ export class InputTracker {
         document.addEventListener("wheel",     this._onWheel,  { passive: true });
         document.addEventListener("focusin",   this._onFocusIn);
         document.addEventListener("focusout",  this._onFocusOut);
+        document.addEventListener("click", this._onPageClick);
+
+        // Observe pagination DOM changes (for SPA or programmatic updates)
+        try {
+            const pagesRoot = document.querySelectorAll('.pagination-pages');
+            if (pagesRoot && pagesRoot.length) {
+                this._paginationObserver = new MutationObserver(this._onPaginationMut);
+                pagesRoot.forEach((el) =>
+                    this._paginationObserver.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
+                );
+            }
+        } catch (err) {
+            // ignore observer errors in older browsers
+        }
     }
 
     stop() {
@@ -140,6 +158,11 @@ export class InputTracker {
         document.removeEventListener("wheel",     this._onWheel);
         document.removeEventListener("focusin",   this._onFocusIn);
         document.removeEventListener("focusout",  this._onFocusOut);
+        document.removeEventListener("click", this._onPageClick);
+        if (this._paginationObserver) {
+            try { this._paginationObserver.disconnect(); } catch (e) {}
+            this._paginationObserver = null;
+        }
     }
 
     /* ── Handlers ── */
@@ -388,90 +411,39 @@ export class InputTracker {
         /* ═════ RÉSULTAT — conforme à MouseBehaviorBatch ═════ */
         return {
             session_id:                      this.sessionId,
-            page:                            window.location.pathname,
+            page:                            String(window.__currentProductPage || 1),
             batch_t:                         Date.now() - this.sessionStart,
             movement,
             clicks,
             scroll,
             heuristics,
             form,
+            navigation: {
+                pages_visited: [],
+                unique_pages: 0,
+                revisit_rate: 0.0,
+                session_duration_sec: elapsed,
+            },
         };
     }
 
-    /** Computes click features from this.clicks. */
-    _computeClicks() {
-        const cl = this.clicks;
-        let leftCount = 0, rightCount = 0, midCount = 0;
-        for (const c of cl) {
-            if (c.btn === 0) leftCount++;
-            else if (c.btn === 2) rightCount++;
-            else if (c.btn === 1) midCount++;
-        }
-        const clickInts = [];
-        for (let i = 1; i < cl.length; i++) clickInts.push((cl[i].t - cl[i - 1].t) / 1000);
-        const leftClicks = cl.filter(c => c.btn === 0);
-        let doubleClicks = 0;
-        for (let i = 1; i < leftClicks.length; i++) {
-            if ((leftClicks[i].t - leftClicks[i - 1].t) < 300) doubleClicks++;
-        }
-        const holds = this.clickHolds.map(h => h / 1000);
-        let rapidBursts = 0;
-        for (let i = 0; i < cl.length; i++) {
-            let j = i + 1;
-            while (j < cl.length && (cl[j].t - cl[i].t) < 500) j++;
-            if (j - i >= 3) { rapidBursts++; i = j - 1; }
-        }
-        let identicalCount = 0;
-        for (let i = 1; i < clickInts.length; i++) {
-            if (Math.abs(clickInts[i] - clickInts[i - 1]) < 0.005) identicalCount++;
-        }
-        return {
-            total_click_events:        cl.length,
-            left_click_count:          leftCount,
-            right_click_count:         rightCount,
-            middle_click_count:        midCount,
-            double_click_count:        doubleClicks,
-            mean_click_interval_sec:   _mean(clickInts),
-            std_click_interval_sec:    _stddev(clickInts),
-            min_click_interval_sec:    _min(clickInts),
-            max_click_interval_sec:    _max(clickInts),
-            mean_click_hold_sec:       _mean(holds),
-            std_click_hold_sec:        _stddev(holds),
-            max_click_hold_sec:        _max(holds),
-            rapid_click_burst_count:   rapidBursts,
-            identical_interval_ratio:  clickInts.length >= 2
-                ? identicalCount / (clickInts.length - 1) : 0,
-        };
+    _handlePageClick(e) {
+        const btn = e.target.closest?.('.pagination button, .pagination-btn, .page-number');
+        if (!btn) return;
+        const pageNum = parseInt(btn.value, 10);
+        if (isNaN(pageNum) || pageNum < 1) return;
+        try { window.__currentProductPage = pageNum; } catch (ex) {}
+        this._lastPage = pageNum;
     }
 
-    /** Computes scroll features from this.scrolls. */
-    _computeScroll(elapsed) {
-        const sc    = this.scrolls;
-        const viewH = window.innerHeight;
-        const scrollDeltasRel = [];
-        for (const s of sc) scrollDeltasRel.push(Math.abs(s.dy) / viewH);
-        const scrollInts = [];
-        for (let i = 1; i < sc.length; i++) scrollInts.push((sc[i].t - sc[i - 1].t) / 1000);
-        let scrollDirChanges = 0;
-        for (let i = 1; i < sc.length; i++) {
-            if (sc[i].dy * sc[i - 1].dy < 0) scrollDirChanges++;
-        }
-        let contSequences = 0, inSeq = false;
-        for (let i = 1; i < sc.length; i++) {
-            if ((sc[i].t - sc[i - 1].t) < 200) {
-                if (!inSeq) { contSequences++; inSeq = true; }
-            } else { inSeq = false; }
-        }
-        return {
-            total_scroll_events:          sc.length,
-            scroll_event_rate_hz:         elapsed > 0 ? sc.length / elapsed : 0,
-            mean_scroll_delta_rel:        _mean(scrollDeltasRel),
-            std_scroll_delta_rel:         _stddev(scrollDeltasRel),
-            max_scroll_delta_rel:         _max(scrollDeltasRel),
-            scroll_direction_changes:     scrollDirChanges,
-            continuous_scroll_sequences:  contSequences,
-            mean_scroll_interval_sec:     _mean(scrollInts),
-        };
+    _handlePaginationMutation(mutations) {
+        const active = document.querySelector('.pagination-pages .page-number.active, .pagination .page-number.active');
+        if (!active) return;
+        const v = parseInt(active.value, 10);
+        if (isNaN(v)) return;
+        if (this._lastPage === v) return;
+        this._lastPage = v;
+        try { window.__currentProductPage = v; } catch (ex) {}
     }
 
     /** Alias sémantique de computeFeatures(). */
