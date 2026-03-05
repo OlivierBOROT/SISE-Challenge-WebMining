@@ -88,10 +88,15 @@ def track_inputs():
     """
     data = request.get_json(force=True)
     session_id: str = data.get('session_id')
+<<<<<<< Updated upstream
     stats: dict = data.get('stats')
+=======
+    stats: dict = data.get('stats', {})
+    source: str = stats.pop('_source', 'human')
+>>>>>>> Stashed changes
 
     behaviour_batch = MouseBehaviorBatch(**stats)
-    result = app.user_service.predict_bot(behaviour_batch, session_id)
+    result = app.user_service.predict_bot(behaviour_batch, session_id, source=source)
 
     return jsonify({
         "label": result.label,

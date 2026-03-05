@@ -27,8 +27,11 @@ Available personas:
 from __future__ import annotations
 
 import argparse
+import atexit
 import logging
 import random
+import signal
+import sys
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -47,6 +50,34 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Graceful shutdown on Ctrl+C
+# ─────────────────────────────────────────────────────────────────────────────
+
+_active_drivers: list["webdriver.Chrome"] = []
+
+
+def _cleanup_drivers() -> None:
+    for driver in _active_drivers[:]:
+        try:
+            # Kill the chromedriver process directly — avoids urllib3 retry delays
+            # that occur when Chrome is already gone.
+            if driver.service.process:
+                driver.service.process.kill()
+        except Exception:
+            pass
+    _active_drivers.clear()
+
+
+def _sigint_handler(signum, frame) -> None:
+    logger.warning("\nInterrupted — quitting all browser sessions...")
+    _cleanup_drivers()
+    sys.exit(130)  # conventional exit code for Ctrl+C
+
+
+atexit.register(_cleanup_drivers)
+signal.signal(signal.SIGINT, _sigint_handler)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Configuration
@@ -104,6 +135,7 @@ class BotPersona(ABC):
     def run(self) -> None:
         """Open browser, tag session, run interactions, then close."""
         driver = make_driver(self.cfg.headless)
+        _active_drivers.append(driver)
         try:
             driver.get(self.cfg.base_url)
             self._wait_for_app(driver)
@@ -116,6 +148,8 @@ class BotPersona(ABC):
             logger.info(f"[{self.source_label}] Session complete")
         finally:
             driver.quit()
+            if driver in _active_drivers:
+                _active_drivers.remove(driver)
 
     # ── helpers ───────────────────────────────────────────────────────────────
 
