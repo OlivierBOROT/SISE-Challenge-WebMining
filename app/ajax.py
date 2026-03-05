@@ -86,7 +86,7 @@ def track_inputs():
         }
     """
     stats = request.json
-    print(stats, flush=True)
+    # print(stats, flush=True)
     behaviour_batch = MouseBehaviorBatch(**stats)
 
     feature_set = app.feature_service.extract(behaviour_batch)
@@ -108,23 +108,42 @@ def track_events():
     Returns:
         json: { features: dict, user_id: str }
     """
+    print("Received event tracking data", flush=True)
+    print("debug : ", app.config["DEBUG"], flush=True)
     data = request.json
     user_events = UserEvents(**data)
 
-    # Convert Pydantic models to plain dicts for FeatureBuilder
+    # Convert Pydantic models to plain dicts
     events_dicts = [e.model_dump() for e in user_events.events]
 
-    if not os.getenv("DEBUG"):
+    # Enrich events sent as IDs using product_data
+    enriched = []
+    for ev in events_dicts:
+        if ev.get("object") == "product":
+            pid = ev.get("product_id")
+            if pid:
+                try:
+                    prod = app.product_data.get_by_id(pid)
+                    ev["product_name"] = getattr(prod, "title", None)
+                    ev["price"] = getattr(prod, "price", None)
+                    ev["category"] = getattr(prod, "category", None)
+                except Exception:
+                    current_app.logger.warning("Unknown product id %s", pid)
+        elif ev.get("object") == "category":
+            cid = ev.get("category_id")
+            if cid:
+                ev["category_name"] = cid
+        enriched.append(ev)
+
+    if not app.config["DEBUG"]:
         # Build features and predict using BehaviorService
         result = app.behavior_service.predict_from_raw_data(
-            events_dicts, session_id=user_events.user_id
+            enriched, session_id=user_events.user_id
         )
     else:
         # Persist features to JSONL via behavior_service.log_feature
         try:
-            app.behavior_service.log_feature(
-                events_dicts, session_id=user_events.user_id
-            )
+            app.behavior_service.log_feature(enriched, session_id=user_events.user_id)
         except Exception:
             current_app.logger.exception("Failed to log behavior features")
             return jsonify({"success": False, "error": "Failed to log features"}), 500

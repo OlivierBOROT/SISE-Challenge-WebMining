@@ -62,7 +62,8 @@ class BehaviorService:
         """
         current_time = time.time()
         features = self.feature_builder.build(events, current_time=current_time)
-
+        print("features", flush=True)
+        print(features, flush=True)
         # Try to infer page number from events if not explicitly provided
         if page is None:
             for e in reversed(events):

@@ -18,13 +18,12 @@ class BaseEvent(BaseModel):
 # ----------------------------
 class ProductEvent(BaseEvent):
     object: Literal["product"]
-    # Allow sending either full product details or only the product id.
-    product_id: Optional[str] = None
-    category: Optional[str] = None
-    product_name: Optional[str] = None
-    price: Optional[confloat(ge=0)] = None
-    time_spent: Optional[confloat(ge=0)] = None
-    event_type: Optional[Literal["hover", "click", "achat"]] = None
+    # Only validate product identifier, event type and time spent
+    product_id: str = Field(..., description="ID du produit (data-id)")
+    event_type: Literal["hover", "click", "achat"] = Field(
+        ..., description="Type d'événement produit"
+    )
+    time_spent: confloat(ge=0) = Field(..., description="Temps passé (secondes)")
 
 
 # ----------------------------
@@ -32,11 +31,12 @@ class ProductEvent(BaseEvent):
 # ----------------------------
 class CategoryEvent(BaseEvent):
     object: Literal["category"]
-    # category may be sent as id (data-id) or as name
-    category_id: Optional[str] = None
-    category_name: Optional[str] = None
-    time_spent: Optional[confloat(ge=0)] = None
-    event_type: Optional[Literal["hover", "click"]] = None
+    # Only validate category identifier, event type and time spent
+    category_id: str = Field(..., description="ID de la catégorie (data-id)")
+    event_type: Literal["hover", "click"] = Field(
+        ..., description="Type d'événement catégorie"
+    )
+    time_spent: confloat(ge=0) = Field(..., description="Temps passé (secondes)")
 
 
 # ----------------------------
