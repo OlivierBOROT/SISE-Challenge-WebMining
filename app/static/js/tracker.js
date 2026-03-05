@@ -36,6 +36,10 @@ function trackInputs() {
         }
 
         // Attach optional source label injected externally (e.g. by Selenium bots)
+        if (window.__TRACKER_SOURCE__) {
+            stats._source = window.__TRACKER_SOURCE__;
+        }
+
         // Send stats to python
         const response = await fetch('ajax/track_inputs', {
             method: 'POST',
