@@ -152,8 +152,6 @@ class InputFeatureBuilder:
         vector = [features[col] for col in FEATURE_COLUMNS]
 
         return InputFeatureSet(
-            page=batch.page,
-            batch_t=batch.batch_t,
             features=features,
             vector=vector,
         )
