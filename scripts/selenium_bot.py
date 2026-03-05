@@ -168,13 +168,39 @@ class BotPersona(ABC):
         time.sleep(BATCH_INTERVAL_SEC)
 
     def _scroll_to(self, driver: webdriver.Chrome, y: int) -> None:
-        driver.execute_script(f"window.scrollTo(0, {y});")
+        driver.execute_script("""
+            var prev = window.scrollY;
+            window.scrollTo(0, arguments[0]);
+            var delta = window.scrollY - prev;
+            if (delta !== 0) {
+                document.dispatchEvent(new WheelEvent('wheel', {
+                    bubbles: true, deltaY: delta, deltaMode: 0
+                }));
+            }
+        """, y)
 
     def _scroll_by(self, driver: webdriver.Chrome, delta: int) -> None:
-        driver.execute_script(f"window.scrollBy(0, {delta});")
+        driver.execute_script("""
+            window.scrollBy(0, arguments[0]);
+            document.dispatchEvent(new WheelEvent('wheel', {
+                bubbles: true, deltaY: arguments[0], deltaMode: 0
+            }));
+        """, delta)
 
     def _js_click(self, driver: webdriver.Chrome, element) -> None:
-        driver.execute_script("arguments[0].click();", element)
+        driver.execute_script("""
+            var el = arguments[0];
+            var rect = el.getBoundingClientRect();
+            var x = rect.left + rect.width / 2;
+            var y = rect.top + rect.height / 2;
+            el.dispatchEvent(new MouseEvent('mousedown', {
+                bubbles: true, clientX: x, clientY: y, button: 0
+            }));
+            el.dispatchEvent(new MouseEvent('mouseup', {
+                bubbles: true, clientX: x, clientY: y, button: 0
+            }));
+            el.click();
+        """, element)
 
     def _find_category_links(self, driver: webdriver.Chrome) -> list:
         try:
