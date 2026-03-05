@@ -21,8 +21,13 @@ class BehaviorService:
     def __init__(self, model_path: str = DEFAULT_MODEL_PATH):
         self.model_path = model_path
         if not os.path.exists(self.model_path):
-            raise FileNotFoundError(f"Model not found at {self.model_path}")
-        self.model_manager = ModelManager.load(self.model_path)
+            self.model_found = False
+            print(
+                f"Warning: Model file not found at {self.model_path}. Prediction will fail until a model is trained and saved at this path."
+            )
+        else:
+            self.model_found = True
+            self.model_manager = ModelManager.load(self.model_path)
         self.feature_builder = FeatureBuilder()
 
     def predict_from_raw_data(
@@ -33,6 +38,10 @@ class BehaviorService:
         Returns:
             dict: {"label": int, "features": Dict[str, float]}
         """
+        if not self.model_found:
+            raise RuntimeError(
+                f"Model file not found at {self.model_path}. Cannot predict. Please train and save a model at this path."
+            )
         current_time = time.time()
         features = self.feature_builder.build(events, current_time=current_time)
         label = self.model_manager.predict(features)

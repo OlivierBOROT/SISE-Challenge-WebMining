@@ -86,6 +86,7 @@ def track_inputs():
         }
     """
     stats = request.json
+    print(stats, flush=True)
     behaviour_batch = MouseBehaviorBatch(**stats)
 
     feature_set = app.feature_service.extract(behaviour_batch)

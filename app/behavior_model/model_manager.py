@@ -21,6 +21,8 @@ class ModelManager:
         self.model = hdbscan.HDBSCAN(
             min_cluster_size=min_cluster_size, prediction_data=True
         )
+        self.pca_dim = pca_dim
+        self.pca_results = None
         self.fitted = False
         self.feature_order = None
 
@@ -34,6 +36,7 @@ class ModelManager:
         X_scaled = self.scaler.fit_transform(X)
         if self.use_pca and self.pca is not None:
             X_scaled = self.pca.fit_transform(X_scaled)
+            self.pca_results = self.pca.explained_variance_ratio_
         self.model.fit(X_scaled)
         self.fitted = True
 

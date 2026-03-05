@@ -1,11 +1,11 @@
 import { InputTracker } from './modules/inputTracker.js';
-import { EventTracker } from './modules/eventTracker.js';
+// import { EventTracker } from './modules/eventTracker.js';
 import { drawTrackPlot } from './modules/mouseTrackPlot.js';
 import { drawSpeedPlot } from './modules/mouseSpeedPlot.js';
 import { initUserResult, setClusterResult } from './modules/userResult.js';
 
 const inputTracker = new InputTracker();
-const eventTracker = new EventTracker({ userId: inputTracker.sessionId });
+// const eventTracker = new EventTracker({ userId: inputTracker.sessionId });
 
 
 
@@ -73,4 +73,4 @@ initUserResult();
 trackInputs();
 
 // Track user events (product, category, page interactions)
-trackEvents();
+// trackEvents();

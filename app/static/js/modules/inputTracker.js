@@ -120,6 +120,10 @@ export class InputTracker {
         this._onWheel  = this._handleWheel.bind(this);
         this._onFocusIn  = this._handleFocusIn.bind(this);
         this._onFocusOut = this._handleFocusOut.bind(this);
+        this._onPageClick = this._handlePageClick.bind(this);
+        this._onPaginationMut = this._handlePaginationMutation.bind(this);
+        this._paginationObserver = null;
+        this._lastPage = window.__currentProductPage ?? null;
     }
 
     /* ── Cycle de vie ── */
@@ -131,6 +135,20 @@ export class InputTracker {
         document.addEventListener("wheel",     this._onWheel,  { passive: true });
         document.addEventListener("focusin",   this._onFocusIn);
         document.addEventListener("focusout",  this._onFocusOut);
+        document.addEventListener("click", this._onPageClick);
+
+        // Observe pagination DOM changes (for SPA or programmatic updates)
+        try {
+            const pagesRoot = document.querySelectorAll('.pagination-pages');
+            if (pagesRoot && pagesRoot.length) {
+                this._paginationObserver = new MutationObserver(this._onPaginationMut);
+                pagesRoot.forEach((el) =>
+                    this._paginationObserver.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
+                );
+            }
+        } catch (err) {
+            // ignore observer errors in older browsers
+        }
     }
 
     stop() {
@@ -140,6 +158,11 @@ export class InputTracker {
         document.removeEventListener("wheel",     this._onWheel);
         document.removeEventListener("focusin",   this._onFocusIn);
         document.removeEventListener("focusout",  this._onFocusOut);
+        document.removeEventListener("click", this._onPageClick);
+        if (this._paginationObserver) {
+            try { this._paginationObserver.disconnect(); } catch (e) {}
+            this._paginationObserver = null;
+        }
     }
 
     /* ── Handlers ── */
@@ -429,16 +452,39 @@ export class InputTracker {
         /* ═════ RÉSULTAT — conforme à MouseBehaviorBatch ═════ */
         return {
             session_id:                      this.sessionId,
-            // Use pagination page number if available (set by layout.js),
-            // fallback to 1 when not found.
-            page:                            (window.__currentProductPage || 1),
+            page:                            String(window.__currentProductPage || 1),
             batch_t:                         Date.now() - this.sessionStart,
             movement,
             clicks,
             scroll,
             heuristics,
             form,
+            navigation: {
+                pages_visited: [],
+                unique_pages: 0,
+                revisit_rate: 0.0,
+                session_duration_sec: elapsed,
+            },
         };
+    }
+
+    _handlePageClick(e) {
+        const btn = e.target.closest?.('.pagination button, .pagination-btn, .page-number');
+        if (!btn) return;
+        const pageNum = parseInt(btn.value, 10);
+        if (isNaN(pageNum) || pageNum < 1) return;
+        try { window.__currentProductPage = pageNum; } catch (ex) {}
+        this._lastPage = pageNum;
+    }
+
+    _handlePaginationMutation(mutations) {
+        const active = document.querySelector('.pagination-pages .page-number.active, .pagination .page-number.active');
+        if (!active) return;
+        const v = parseInt(active.value, 10);
+        if (isNaN(v)) return;
+        if (this._lastPage === v) return;
+        this._lastPage = v;
+        try { window.__currentProductPage = v; } catch (ex) {}
     }
 
     /** Alias sémantique de computeFeatures(). */

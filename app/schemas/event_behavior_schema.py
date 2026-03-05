@@ -18,11 +18,13 @@ class BaseEvent(BaseModel):
 # ----------------------------
 class ProductEvent(BaseEvent):
     object: Literal["product"]
-    category: str
-    product_name: str
-    price: confloat(ge=0)
-    time_spent: confloat(ge=0)
-    event_type: Literal["hover", "click", "achat"]
+    # Allow sending either full product details or only the product id.
+    product_id: Optional[str] = None
+    category: Optional[str] = None
+    product_name: Optional[str] = None
+    price: Optional[confloat(ge=0)] = None
+    time_spent: Optional[confloat(ge=0)] = None
+    event_type: Optional[Literal["hover", "click", "achat"]] = None
 
 
 # ----------------------------
@@ -30,9 +32,11 @@ class ProductEvent(BaseEvent):
 # ----------------------------
 class CategoryEvent(BaseEvent):
     object: Literal["category"]
-    category_name: str
-    time_spent: confloat(ge=0)
-    event_type: Literal["hover", "click"]
+    # category may be sent as id (data-id) or as name
+    category_id: Optional[str] = None
+    category_name: Optional[str] = None
+    time_spent: Optional[confloat(ge=0)] = None
+    event_type: Optional[Literal["hover", "click"]] = None
 
 
 # ----------------------------
