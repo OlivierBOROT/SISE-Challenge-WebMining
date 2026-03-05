@@ -1,6 +1,7 @@
 import { InputTracker } from './modules/inputTracker.js';
 import { drawTrackPlot } from './modules/mouseTrackPlot.js';
 import { drawSpeedPlot } from './modules/mouseSpeedPlot.js';
+import { initUserResult, setClusterResult } from './modules/userResult.js';
 
 const inputTracker = new InputTracker()
 
@@ -42,6 +43,7 @@ function trackInputs() {
 // Render analytics plots
 drawTrackPlot();
 drawSpeedPlot();
+initUserResult();
 
 // Track user inputs
 trackInputs();
