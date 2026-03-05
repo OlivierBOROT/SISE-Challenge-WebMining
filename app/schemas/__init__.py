@@ -1,3 +1,5 @@
+from .feature_schema import InputFeatureSet
+from.bot_analysis_answer_schema import DetectionResult
 from .bot_analysis_schema import (
     ClickMetrics,
     FormMetrics,
@@ -7,8 +9,9 @@ from .bot_analysis_schema import (
     NavigationMetrics,
     ScrollMetrics,
 )
-from app.schemas.product_schema import Product
-from app.schemas.user_session_schema import UserSession
+from .product_schema import Product
+from .user_session_schema import UserSession
+
 
 __all__ = [
     "MovementMetrics",
@@ -19,5 +22,7 @@ __all__ = [
     "NavigationMetrics",
     "MouseBehaviorBatch",
     "Product",
-    "UserSession"
+    "UserSession",
+    "InputFeatureSet",
+    "DetectionResult"
 ]

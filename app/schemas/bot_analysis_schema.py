@@ -114,7 +114,6 @@ class MouseBehaviorBatch(BaseModel):
     """Full batch of mouse behavior data sent from the JS frontend every 10s."""
 
     # Metadata
-    session_id: str
     page: str
     batch_t: float  # ms since session start
 

@@ -8,6 +8,16 @@ const inputTracker = new InputTracker()
 
 
 
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) {
+        return parts.pop().split(';').shift();
+    }
+    return null;
+}
+
+
 function trackInputs() {
     inputTracker.start();
     setInterval(async () => {
@@ -32,13 +42,15 @@ function trackInputs() {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+                stats: payload,
+                session_id: getCookie('session_id')
+            })
         })
         const content = await response.json();
         // TODO: display result: {is_bot: bool, bot_score: float}
-    }, 15000);
+    }, 1000);
 }
-
 
 
 

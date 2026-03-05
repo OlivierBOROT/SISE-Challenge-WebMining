@@ -6,11 +6,10 @@ vector ready to be passed to the ML model.
 
 import logging
 import math
-from dataclasses import dataclass
 
 import numpy as np
 
-from app.schemas import MouseBehaviorBatch
+from app.schemas import MouseBehaviorBatch, InputFeatureSet
 
 logger = logging.getLogger(__name__)
 
@@ -19,13 +18,7 @@ logger = logging.getLogger(__name__)
 # Output dataclass
 # ─────────────────────────────────────────────────────────────────────────────
 
-@dataclass
-class FeatureSet:
-    session_id: str
-    page: str
-    batch_t: float
-    features: dict[str, float]      # named features
-    vector: list[float]             # ordered vector for the model
+
 
 FEATURE_COLUMNS = [
     # A — Mouse movement
@@ -84,7 +77,7 @@ BOT_RULES = [
 ]
 
 
-class FeatureService:
+class InputFeatureBuilder:
 
     def _safe(self, val: float) -> float:
         """Replace NaN/inf with 0.0 to avoid crashing the model."""
@@ -92,10 +85,10 @@ class FeatureService:
             return 0.0
         return round(float(val), 6)
 
-    def extract(self, batch: MouseBehaviorBatch) -> FeatureSet:
+    def extract(self, batch: MouseBehaviorBatch) -> InputFeatureSet:
         """
         Main entry point.
-        Receives a validated batch and returns a FeatureSet with named features + ordered vector.
+        Receives a validated batch and returns a InputFeatureSet with named features + ordered vector.
         """
         m  = batch.movement
         cl = batch.clicks
@@ -158,19 +151,18 @@ class FeatureService:
 
         vector = [features[col] for col in FEATURE_COLUMNS]
 
-        return FeatureSet(
-            session_id=batch.session_id,
+        return InputFeatureSet(
             page=batch.page,
             batch_t=batch.batch_t,
             features=features,
             vector=vector,
         )
 
-    def to_numpy(self, feature_set: FeatureSet) -> np.ndarray:
+    def to_numpy(self, feature_set: InputFeatureSet) -> np.ndarray:
         """Return the feature vector as a 2D numpy array for scikit-learn."""
         return np.array(feature_set.vector, dtype=float).reshape(1, -1)
 
-    def heuristic_score(self, feature_set: FeatureSet) -> tuple[float, list[str]]:
+    def heuristic_score(self, feature_set: InputFeatureSet) -> tuple[float, list[str]]:
         """
         Rule-based score — works without a trained model.
         Returns (score 0.0–1.0, list of triggered rules).
@@ -195,6 +187,6 @@ class FeatureService:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def to_numpy(feature_set: FeatureSet) -> np.ndarray:
-    """Convert FeatureSet vector to 2D numpy array for scikit-learn models."""
+def to_numpy(feature_set: InputFeatureSet) -> np.ndarray:
+    """Convert InputFeatureSet vector to 2D numpy array for scikit-learn models."""
     return np.array(feature_set.vector, dtype=float).reshape(1, -1)

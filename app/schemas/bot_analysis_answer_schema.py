@@ -1,12 +1,11 @@
-"""
-Schema definitions for bot analysis features.
-"""
+from dataclasses import dataclass
 
-from pydantic import BaseModel
-
-
-class BotAnalysisAnswer(BaseModel):
-    """Schema for bot analysis results."""
-
-    is_bot: bool
-    bot_score: float  # Confidence score between 0 and 1
+@dataclass
+class DetectionResult:
+    label: str          # "human" | "bot"
+    score: float        # raw decision_function score (positive = human)
+    anomaly: int        # 1 = normal (human), -1 = anomaly (bot)
+    confidence: float   # 0.0–1.0
+    model_type: str     # which model produced this result
+    schema_version: str = "1.0"  # detection output schema version
+    feature_version: str = "1.0"  # feature extraction schema version

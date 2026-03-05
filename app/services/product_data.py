@@ -2,24 +2,10 @@ import json
 import logging
 import math
 import os
-from dataclasses import dataclass
 from rapidfuzz import process
 from app.schemas import Product
 
 logger = logging.getLogger(__name__)
-
-
-
-@dataclass
-class Product:
-    """Product entity from catalog."""
-
-    id: str
-    title: str
-    description_short: str
-    description_long: str
-    category: str
-    price: float
 
 
 class ProductData:
