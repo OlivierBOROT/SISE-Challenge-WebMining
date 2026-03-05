@@ -16,6 +16,7 @@ class AppContext(Flask):
     product_data: ProductData
     storage_service: StorageService
     feature_service: FeatureService
+    behavior_service: BehaviorService
 
 
 def create_app() -> Flask:

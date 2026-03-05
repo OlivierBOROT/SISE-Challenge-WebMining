@@ -5,13 +5,15 @@ Only design here function designed to be called from
 front end. No complex logic.
 """
 
+import os
 import time
 from typing import cast
 
 from flask import Blueprint, current_app, jsonify, render_template, request
 
 from app import AppContext
-from app.behavior_model import FeatureBuilder
+
+# Use BehaviorService via app.behavior_service (do not import FeatureBuilder here)
 from app.schemas import MouseBehaviorBatch, UserEvents
 
 # Cast app_context typing
@@ -111,12 +113,21 @@ def track_events():
     # Convert Pydantic models to plain dicts for FeatureBuilder
     events_dicts = [e.model_dump() for e in user_events.events]
 
-    result = app.behavior_service.predict_from_raw(
-        events_dicts, session_id=user_events.user_id
-    )
-    fs = result.get("feature_set")
-    if fs is not None:
-        app.storage_service.append(fs)
+    if not os.getenv("DEBUG"):
+        # Build features and predict using BehaviorService
+        result = app.behavior_service.predict_from_raw_data(
+            events_dicts, session_id=user_events.user_id
+        )
+    else:
+        # Persist features to JSONL via behavior_service.log_feature
+        try:
+            app.behavior_service.log_feature(
+                events_dicts, session_id=user_events.user_id
+            )
+        except Exception:
+            current_app.logger.exception("Failed to log behavior features")
+            return jsonify({"success": False, "error": "Failed to log features"}), 500
+
     return jsonify(
         {
             "user_id": user_events.user_id,
