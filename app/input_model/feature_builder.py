@@ -6,11 +6,10 @@ vector ready to be passed to the ML model.
 
 import logging
 import math
-from dataclasses import dataclass
 
 import numpy as np
 
-from app.schemas import MouseBehaviorBatch
+from app.schemas import MouseBehaviorBatch, FeatureSet
 
 logger = logging.getLogger(__name__)
 
@@ -19,13 +18,7 @@ logger = logging.getLogger(__name__)
 # Output dataclass
 # ─────────────────────────────────────────────────────────────────────────────
 
-@dataclass
-class FeatureSet:
-    session_id: str
-    page: str
-    batch_t: float
-    features: dict[str, float]      # named features
-    vector: list[float]             # ordered vector for the model
+
 
 FEATURE_COLUMNS = [
     # A — Mouse movement
@@ -84,7 +77,7 @@ BOT_RULES = [
 ]
 
 
-class FeatureService:
+class InputFeatureBuilder:
 
     def _safe(self, val: float) -> float:
         """Replace NaN/inf with 0.0 to avoid crashing the model."""
@@ -159,7 +152,6 @@ class FeatureService:
         vector = [features[col] for col in FEATURE_COLUMNS]
 
         return FeatureSet(
-            session_id=batch.session_id,
             page=batch.page,
             batch_t=batch.batch_t,
             features=features,

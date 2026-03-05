@@ -12,6 +12,7 @@ from flask import Blueprint, current_app, jsonify, render_template, request
 from app import AppContext
 from app.schemas import MouseBehaviorBatch
 
+app = cast(AppContext, current_app)
 # Create blueprint
 ajax = Blueprint("ajax", __name__)
 
@@ -27,7 +28,6 @@ def render_categories():
     Returns:
         HTML: Categories menu section
     """
-    app = cast(AppContext, current_app)
     categories = app.product_data.get_available_categories()
     return render_template("elements/categories.html", categories=categories)
 
@@ -44,7 +44,6 @@ def render_products():
     Returns:
         html: Product result section
     """
-    app = cast(AppContext, current_app)
     category = request.args.get("category", "all")
     query = request.args.get("query")
     page = request.args.get("page", 0, type=int)
@@ -76,7 +75,10 @@ def track_inputs():
     Predict bot / user label from client inputs
 
     Arguments:
-        json: client input metrics
+        json: {
+            "session_id": session id
+            "stats": client input metrics
+        }
 
     Returns:
         json: {
@@ -84,12 +86,15 @@ def track_inputs():
             "bot_score": int
         }
     """
-    app = cast(AppContext, current_app)
-    stats = dict(request.json)  # type: ignore
+    session_id: str = request.form.get('session_id')  # type: ignore
+    stats: dict = request.form.get('stats')  # type: ignore
+
     source = stats.pop("_source", "human")  # injected by bots; defaults to human
     behaviour_batch = MouseBehaviorBatch(**stats)
 
-    feature_set = app.feature_service.extract(behaviour_batch)
-    app.storage_service.append(feature_set, source=source)
+    result = app.user_service.predict_bot(behaviour_batch, session_id)
 
-    return jsonify({"success": True})
+    return jsonify({
+        "label": result.label,
+        "score": result.score
+    })

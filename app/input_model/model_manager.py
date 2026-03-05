@@ -26,7 +26,8 @@ from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.svm import OneClassSVM
 
-from app.services.feature_service import FEATURE_COLUMNS, FeatureSet, to_numpy
+from app.schemas import DetectionResult
+from app.input_model.feature_builder import FEATURE_COLUMNS, FeatureSet, to_numpy
 from app.services.storage_service import JSONL_PATH, load_numpy, record_count
 
 logger = logging.getLogger(__name__)
@@ -131,27 +132,11 @@ def _build_model(config: ModelConfig) -> BaseEstimator:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Output schema
-# ─────────────────────────────────────────────────────────────────────────────
-
-@dataclass
-class DetectionResult:
-    session_id: str
-    label: str          # "human" | "bot"
-    score: float        # raw decision_function score (positive = human)
-    anomaly: int        # 1 = normal (human), -1 = anomaly (bot)
-    confidence: float   # 0.0–1.0
-    model_type: str     # which model produced this result
-    schema_version: str = "1.0"  # detection output schema version
-    feature_version: str = "1.0"  # feature extraction schema version
-
-
-# ─────────────────────────────────────────────────────────────────────────────
 # Training Service
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-class TrainingService:
+class InputModelManager:
     """
     Manages anomaly detection model training, persistence, and inference.
     Encapsulates model state and caching to support lazy-loading and retraining.
@@ -402,7 +387,6 @@ class TrainingService:
         confidence = min(1.0, abs(score) / divisor)
 
         return DetectionResult(
-            session_id=feature_set.session_id,
             label=label,
             score=round(score, 6),
             anomaly=anomaly,

@@ -3,9 +3,15 @@ App routes
 
 Only design here routes (pages) for the front end
 """
-from flask import Blueprint, render_template, make_response, jsonify
+from typing import cast
+
+from flask import Blueprint, render_template, make_response, jsonify, current_app
+
+from app import AppContext
 
 
+
+app = cast(AppContext, current_app)
 # Create blueprint
 main = Blueprint("main", __name__)
 
@@ -18,8 +24,8 @@ def home():
         html: Main page HTML
     """
     resp = make_response(render_template("index.html"))
-    session_id = # create session ID from UserSession
-    resp.headers["X-Session-ID"] = session_id
+    session = app.user_service.create_session()
+    resp.headers["X-Session-ID"] = session.id
 
     #TODO: we need to create a session ID on page load. Each session is stored in a UserSession service, 
     # it contains the inputs metrics and behaviour events nedded to predict on the models.

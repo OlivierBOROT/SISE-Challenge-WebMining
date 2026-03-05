@@ -26,7 +26,7 @@ from pathlib import Path
 
 import numpy as np
 
-from app.services.feature_service import FeatureSet, FEATURE_COLUMNS
+from app.input_model.feature_builder import FeatureSet, FEATURE_COLUMNS
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +121,6 @@ class StorageService:
                         continue
                     results.append(
                         FeatureSet(
-                            session_id=row["session_id"],
                             page=row["page"],
                             batch_t=row["batch_t"],
                             features=row["features"],
@@ -182,7 +181,6 @@ class StorageService:
 
         rows = [
             {
-                "session_id": fs.session_id,
                 "page": fs.page,
                 "batch_t": fs.batch_t,
                 **{col: fs.features.get(col, 0.0) for col in FEATURE_COLUMNS}

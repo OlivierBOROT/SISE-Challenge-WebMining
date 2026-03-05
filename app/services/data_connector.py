@@ -16,7 +16,7 @@ import logging
 
 import numpy as np
 
-from app.services.feature_service import FeatureSet, FEATURE_COLUMNS
+from app.input_model.feature_builder import FeatureSet, FEATURE_COLUMNS
 from app.services.storage_service import StorageService
 
 logger = logging.getLogger(__name__)
@@ -62,7 +62,6 @@ class DataConnector:
             schema_version=schema_version,
             feature_version=feature_version,
         )
-        logger.debug(f"Persisted POC data for session {feature_set.session_id}")
 
     def persist_production_data(
         self,
@@ -85,7 +84,6 @@ class DataConnector:
             schema_version=schema_version,
             feature_version=feature_version,
         )
-        logger.debug(f"Persisted production data for session {feature_set.session_id}")
 
     def get_training_data(
         self,
