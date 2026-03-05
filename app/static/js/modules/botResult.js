@@ -12,13 +12,9 @@ export function setBotResult(label, score) {
     if (label === "bot") {
         widget.classList.add("is-bot");
         elStatus.textContent = "⚠ Bot";
-        elVerdict.textContent = "Classified as BOT — high confidence";
     } else {
         widget.classList.add("is-human");
         elStatus.textContent = "✓ Human";
-        elVerdict.textContent = score < 0.25
-            ? "Classified as Human — high confidence"
-            : "Classified as Human — low confidence";
     }
 }
 
