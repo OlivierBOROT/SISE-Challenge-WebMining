@@ -297,7 +297,42 @@ class StorageService(Generic[T]):
 # Module-level utility functions for simple use cases
 # ─────────────────────────────────────────────────────────────────────────────
 
-JSONL_PATH = Path(os.environ.get("DATA_PATH", "data")) / "features.jsonl"
+JSONL_PATH = Path(os.environ.get("DATA_PATH", "data")) / "features" / "features.jsonl"
+
+
+def append(
+    feature_set: FeatureSet,
+    source: str = "production",
+    schema_version: str = "1.0",
+    feature_version: str = "1.0",
+    path: Path | str | None = None,
+) -> None:
+    """
+    Append a single feature set to the JSONL store.
+    Creates the file (and parent dirs) if they don't exist.
+
+    Args:
+        feature_set: Any object implementing the FeatureSet protocol
+        source: Data origin label (e.g. 'production', 'human', 'bot_linear')
+        schema_version: Storage schema version
+        feature_version: Feature extraction schema version
+        path: Path to JSONL file. Defaults to JSONL_PATH
+    """
+    target = Path(path) if path is not None else JSONL_PATH
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        row = asdict(feature_set)  # type: ignore
+    except TypeError:
+        row = {k: v for k, v in feature_set.__dict__.items() if not k.startswith('_')}
+
+    row["source"] = source
+    row["schema_version"] = schema_version
+    row["feature_version"] = feature_version
+    row["stored_at"] = datetime.utcnow().isoformat()
+
+    with target.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(row) + "\n")
 
 
 def load_numpy(path: Path | str | None = None, feature_columns: List[str] | None = None) -> np.ndarray:

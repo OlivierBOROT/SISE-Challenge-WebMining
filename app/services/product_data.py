@@ -2,9 +2,7 @@ import json
 import logging
 import math
 import os
-
 from rapidfuzz import process
-
 from app.schemas import Product
 
 logger = logging.getLogger(__name__)

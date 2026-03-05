@@ -1,6 +1,7 @@
 from app.input_model import InputFeatureBuilder, InputModelManager
 from app.behavior_model import BehaviourFeatureBuilder, BehaviourModelManager
 from app.schemas import UserSession, MouseBehaviorBatch, UserEvents, DetectionResult
+import app.utility.storage as storage
 
 class UserService:
 
@@ -46,7 +47,7 @@ class UserService:
 
         return session
     
-    def predict_bot(self, behaviour_batch: MouseBehaviorBatch, session_id: str) -> DetectionResult:
+    def predict_bot(self, behaviour_batch: MouseBehaviorBatch, session_id: str, source: str = "human") -> DetectionResult:
         """
         Validate features with FeatureSe, run prediction and return results
 
@@ -65,6 +66,8 @@ class UserService:
         result = self.input_model_manager.predict(features)
         session.input_features = features
         session.bot_prediction = result
+
+        storage.append(features, source=source)
 
         return result
 
