@@ -59,7 +59,7 @@ class UserService:
         session = self.sessions.get(session_id)
 
         if not session and fall_back:
-            session = self.create_session(id=session_id)
+            session = self.create_session(session_id=session_id)
 
         return session
 
