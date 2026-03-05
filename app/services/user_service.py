@@ -30,36 +30,36 @@ class UserService:
             feature_class=BehaviourFeatureSet,
         )
 
-    def create_session(self, id: str | None = None) -> UserSession:
+    def create_session(self, session_id: str | None = None) -> UserSession:
         """
         Create a new user session
 
         Returns:
             UserSession: Created user session
         """
-        if id:
-            s = UserSession(id=id)
+        if session_id:
+            s = UserSession(id=session_id)
         else:
             s = UserSession()
 
         self.sessions[s.id] = s
         return s
 
-    def get_session(self, id: str, fall_back=True) -> UserSession | None:
+    def get_session(self, session_id: str, fall_back=True) -> UserSession | None:
         """
         Retrive a user session from its ID
 
         Args:
-            id (str): Session ID
+            session_id (str): Session ID
             fall_back (bool): Whether to create a session if not found
 
         Returns:
             UserSession
         """
-        session = self.sessions.get(id)
+        session = self.sessions.get(session_id)
 
         if not session and fall_back:
-            session = self.create_session(id=id)
+            session = self.create_session(session_id=session_id)
 
         return session
 

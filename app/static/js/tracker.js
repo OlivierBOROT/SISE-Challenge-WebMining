@@ -20,6 +20,24 @@ function getCookie(name) {
 }
 
 
+let analysisInterval = 10; // secondes (doit correspondre à l'intervalle de trackInputs)
+let timer = analysisInterval;
+const timerElement = document.getElementById('analysis-timer');
+
+function updateTimerDisplay() {
+    if (timerElement) {
+        timerElement.textContent = timer + 's';
+    }
+}
+
+// Timer visuel qui décrémente chaque seconde
+setInterval(() => {
+    timer--;
+    if (timer < 0) timer = analysisInterval;
+    updateTimerDisplay();
+}, 1000);
+
+
 function trackInputs() {
     inputTracker.start();
     setInterval(async () => {
@@ -51,8 +69,10 @@ function trackInputs() {
                 session_id: getCookie('session_id')
             })
         })
+        timer = analysisInterval;
+        updateTimerDisplay();
         const result = await response.json();
-    }, 10000);
+    }, analysisInterval * 1000);
 }
 
 
