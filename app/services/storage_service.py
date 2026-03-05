@@ -47,7 +47,7 @@ class StorageService:
         Initialize storage service.
 
         Args:
-            data_dir: Base data directory. Defaults to project root/data
+            data_dir: Base data directory. Defaults to DATA_PATH env var or 'data'
             jsonl_path: Path to JSONL store. Defaults to data_dir/features.jsonl
             parquet_path: Path to Parquet snapshot. Defaults to data_dir/features.parquet
         """
@@ -233,6 +233,28 @@ class StorageService:
         with self.jsonl_path.open("r", encoding="utf-8") as f:
             return sum(1 for line in f if line.strip())
 
+    def count_by_source(self) -> dict[str, int]:
+        """
+        Count stored records grouped by source label.
+        Scans JSONL without loading full records into memory.
+
+        Returns:
+            dict: e.g. {'human': 12, 'bot_direct': 8, 'bot_linear': 6, ...}
+        """
+        counts: dict[str, int] = {}
+        if not self.jsonl_path.exists():
+            return counts
+        with self.jsonl_path.open("r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        record = json.loads(line)
+                        src = record.get("source", "unknown")
+                        counts[src] = counts.get(src, 0) + 1
+                    except json.JSONDecodeError:
+                        pass
+        return counts
+
     def clear(self) -> None:
         """
         Delete the JSONL store.
@@ -244,59 +266,64 @@ class StorageService:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Module-level singleton for backward compatibility
+# Module-level utility functions (for use by other services)
 # ─────────────────────────────────────────────────────────────────────────────
 
-_default_storage: StorageService | None = None
+# Default JSONL path for module-level functions
+JSONL_PATH = Path(os.environ.get("DATA_PATH", "data")) / "features.jsonl"
 
 
-def get_storage() -> StorageService:
-    """Get or create the default storage service singleton."""
-    global _default_storage
-    if _default_storage is None:
-        _default_storage = StorageService()
-    return _default_storage
+def load_numpy(path: Path | str | None = None) -> np.ndarray:
+    """
+    Load feature vectors from JSONL storage as a 2D numpy array.
+    
+    Args:
+        path: Path to JSONL file. Defaults to JSONL_PATH (data/features.jsonl)
+    
+    Returns:
+        np.ndarray: Shape (N, N_FEATURES)
+    """
+    if path is None:
+        path = JSONL_PATH
+    else:
+        path = Path(path)
+    
+    if not path.exists():
+        return np.empty((0, len(FEATURE_COLUMNS)), dtype=float)
+    
+    vectors = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                try:
+                    record = json.loads(line)
+                    vectors.append(record.get("vector", []))
+                except (json.JSONDecodeError, KeyError):
+                    logger.warning(f"Skipped malformed line in {path}")
+    
+    if not vectors:
+        return np.empty((0, len(FEATURE_COLUMNS)), dtype=float)
+    
+    return np.array(vectors, dtype=float)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Legacy module-level functions for backward compatibility
-# ─────────────────────────────────────────────────────────────────────────────
-
-def append(
-    feature_set: FeatureSet,
-    source: str = "production",
-    schema_version: str = "1.0",
-    feature_version: str = "1.0",
-) -> None:
-    """Backward compatible append function. Uses default storage singleton."""
-    get_storage().append(feature_set, source, schema_version, feature_version)
-
-
-def load_feature_sets(source: str | None = None) -> list[FeatureSet]:
-    """Backward compatible load function. Uses default storage singleton."""
-    return get_storage().load_feature_sets(source)
-
-
-def load_numpy(source: str | None = None) -> np.ndarray:
-    """Backward compatible numpy load function. Uses default storage singleton."""
-    return get_storage().load_numpy(source)
-
-
-def export_parquet(src: Path | None = None, dst: Path | None = None) -> Path:
-    """Backward compatible export function. Uses default storage singleton."""
-    return get_storage().export_parquet(src, dst)
-
-
-def load_parquet(path: Path | None = None) -> np.ndarray:
-    """Backward compatible parquet load function. Uses default storage singleton."""
-    return get_storage().load_parquet(path)
-
-
-def record_count() -> int:
-    """Backward compatible count function. Uses default storage singleton."""
-    return get_storage().record_count()
-
-
-def clear() -> None:
-    """Backward compatible clear function. Uses default storage singleton."""
-    get_storage().clear()
+def record_count(path: Path | str | None = None) -> int:
+    """
+    Return the number of stored records without loading them into memory.
+    
+    Args:
+        path: Path to JSONL file. Defaults to JSONL_PATH (data/features.jsonl)
+    
+    Returns:
+        int: Number of records
+    """
+    if path is None:
+        path = JSONL_PATH
+    else:
+        path = Path(path)
+    
+    if not path.exists():
+        return 0
+    
+    with path.open("r", encoding="utf-8") as f:
+        return sum(1 for line in f if line.strip())

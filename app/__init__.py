@@ -9,19 +9,33 @@ WSGI servers (Gunicorn, Waitress, etc.).
 from dotenv import load_dotenv
 from flask import Flask
 
-from app.services import BehaviorService, FeatureService, ProductData, StorageService
+from app.services import (
+    BehaviorService,
+    DataConnector,
+    FeatureService,
+    ProductData,
+    StorageService,
+    TrainingService,
+)
 
 
 class AppContext(Flask):
+    """Flask app extended with service instances for dependency injection."""
+
     product_data: ProductData
     storage_service: StorageService
     feature_service: FeatureService
+    training_service: TrainingService
+    data_connector: DataConnector
     behavior_service: BehaviorService
 
 
 def create_app() -> Flask:
     """
     Create and configure the Flask application instance.
+
+    Initializes all service instances with explicit dependency injection.
+    Services are instantiated once per app instance and managed by Flask context.
 
     Returns:
         Flask: Configured Flask application instance
@@ -30,7 +44,7 @@ def create_app() -> Flask:
 
     load_dotenv()
 
-    # Instantiate services in app context
+    # Instantiate services with explicit dependency injection
     with app.app_context():
         app.debug = False
         app.product_data = ProductData()  # type: ignore

@@ -12,4 +12,11 @@ dependencies = [
     "numpy>=2.4.2",
     "pydantic>=2.12.5",
     "requests>=2.32.5",
+    "selenium>=4.41.0",
+]
+
+[project.optional-dependencies]
+# Data generation: pip install -e ".[bots]"
+bots = [
+    "selenium>=4.0",
 ]

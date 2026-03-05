@@ -1,9 +1,22 @@
-import os
 import json
+import logging
 import math
+import os
+from dataclasses import dataclass
 
-from app.models import Product
+logger = logging.getLogger(__name__)
 
+
+@dataclass
+class Product:
+    """Product entity from catalog."""
+
+    id: str
+    title: str
+    description_short: str
+    description_long: str
+    category: str
+    price: float
 
 
 class ProductData:
@@ -18,8 +31,8 @@ class ProductData:
         Returns:
             dict: Products
         """
-        data_path = os.environ.get("DATA_PATH")
-        json_path = os.path.join(data_path, "products", "products.json") #type: ignore
+        data_path = os.environ.get("DATA_PATH", "data")
+        json_path = os.path.join(data_path, "products", "products.json")
 
         with open(json_path, 'r') as f:
             content = json.load(f)
@@ -105,3 +118,4 @@ class ProductData:
         start = (page - 1) * count
         end = start + count
         return data[start:end], max_page
+
