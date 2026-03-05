@@ -83,8 +83,8 @@ signal.signal(signal.SIGINT, _sigint_handler)
 # ─────────────────────────────────────────────────────────────────────────────
 
 BASE_URL = "http://localhost:8000"
-BATCH_INTERVAL_SEC = 15      # must match setInterval() in tracker.js
-DEFAULT_BATCHES_PER_SESSION = 4  # how many 15s batches to collect per run
+BATCH_INTERVAL_SEC = 10      # must match setInterval() in tracker.js
+DEFAULT_BATCHES_PER_SESSION = 4  # how many 10s batches to collect per run
 
 
 @dataclass
@@ -163,9 +163,15 @@ class BotPersona(ABC):
             EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
 
-    def _wait_batch(self) -> None:
-        """Sleep one full batch interval so the tracker fires."""
-        time.sleep(BATCH_INTERVAL_SEC)
+    def _wait_batch(self, batch_start: float | None = None) -> None:
+        """Sleep until one full batch interval has elapsed since batch_start."""
+        if batch_start is None:
+            time.sleep(BATCH_INTERVAL_SEC)
+        else:
+            elapsed = time.time() - batch_start
+            remaining = max(0.0, BATCH_INTERVAL_SEC - elapsed)
+            if remaining:
+                time.sleep(remaining)
 
     def _scroll_to(self, driver: webdriver.Chrome, y: int) -> None:
         driver.execute_script("""
@@ -231,6 +237,7 @@ class DirectBot(BotPersona):
 
     def _run_session(self, driver: webdriver.Chrome) -> None:
         for batch in range(self.cfg.batches):
+            batch_start = time.time()
             logger.info(f"[{self.source_label}] Batch {batch + 1}/{self.cfg.batches}")
 
             # Navigate around using JS clicks only
@@ -251,7 +258,7 @@ class DirectBot(BotPersona):
                 self._scroll_to(driver, y)
                 time.sleep(0.05)  # perfectly uniform scroll timing
 
-            self._wait_batch()
+            self._wait_batch(batch_start)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -270,6 +277,7 @@ class LinearBot(BotPersona):
         vp_height = driver.execute_script("return window.innerHeight")
 
         for batch in range(self.cfg.batches):
+            batch_start = time.time()
             logger.info(f"[{self.source_label}] Batch {batch + 1}/{self.cfg.batches}")
 
             # Dispatch synthetic mousemove events in perfectly straight horizontal
@@ -301,7 +309,7 @@ class LinearBot(BotPersona):
                 self._scroll_by(driver, 300)
                 time.sleep(0.2)  # constant 200ms interval
 
-            self._wait_batch()
+            self._wait_batch(batch_start)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -319,6 +327,7 @@ class ScanBot(BotPersona):
         page_height = driver.execute_script("return document.body.scrollHeight")
 
         for batch in range(self.cfg.batches):
+            batch_start = time.time()
             logger.info(f"[{self.source_label}] Batch {batch + 1}/{self.cfg.batches}")
 
             # Scroll down the full page in perfectly uniform steps
@@ -339,7 +348,7 @@ class ScanBot(BotPersona):
                 time.sleep(0.3)
                 page_height = driver.execute_script("return document.body.scrollHeight")
 
-            self._wait_batch()
+            self._wait_batch(batch_start)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -356,6 +365,7 @@ class BurstBot(BotPersona):
 
     def _run_session(self, driver: webdriver.Chrome) -> None:
         for batch in range(self.cfg.batches):
+            batch_start = time.time()
             logger.info(f"[{self.source_label}] Batch {batch + 1}/{self.cfg.batches}")
 
             # Burst click all visible products with identical intervals
@@ -373,12 +383,7 @@ class BurstBot(BotPersona):
                 except Exception:
                     continue
 
-            # Idle for the remainder of the batch (no movement, no interaction).
-            # Clamp to zero to prevent negative sleep if clicking takes longer than batch_t.
-            clicks_time = (len(products[:8]) + len(categories)) * self.BURST_INTERVAL
-            idle = max(0.0, BATCH_INTERVAL_SEC - clicks_time)
-            if idle:
-                time.sleep(idle)
+            self._wait_batch(batch_start)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -399,6 +404,7 @@ class CautiousBot(BotPersona):
         vp_height = driver.execute_script("return window.innerHeight")
 
         for batch in range(self.cfg.batches):
+            batch_start = time.time()
             logger.info(f"[{self.source_label}] Batch {batch + 1}/{self.cfg.batches}")
 
             # Move toward a product using JS-dispatched events at constant speed.
@@ -445,7 +451,7 @@ class CautiousBot(BotPersona):
                 self._scroll_by(driver, 200)
                 time.sleep(0.5)  # constant 500ms interval
 
-            self._wait_batch()
+            self._wait_batch(batch_start)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

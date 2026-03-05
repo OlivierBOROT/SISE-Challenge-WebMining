@@ -124,6 +124,9 @@ export class InputTracker {
         this._onPaginationMut = this._handlePaginationMutation.bind(this);
         this._paginationObserver = null;
         this._lastPage = window.__currentProductPage ?? null;
+        // Persists across batches (like sessionStart) — never reset()
+        if (!this._visitedPages) this._visitedPages = [];
+        if (!this._pageVisitCounts) this._pageVisitCounts = {};
     }
 
     /* ── Cycle de vie ── */
@@ -187,7 +190,10 @@ export class InputTracker {
     }
 
     _handleWheel(e) {
-        this.scrolls.push({ dy: e.deltaY, t: performance.now() });
+        const pos = window.scrollY || 0;
+        const maxScroll = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1);
+        const scrollPos = Math.min(1, Math.max(0, pos / maxScroll));
+        this.scrolls.push({ dy: e.deltaY, t: performance.now(), pos: scrollPos });
     }
 
     _handleFocusIn(e) {
@@ -292,7 +298,11 @@ export class InputTracker {
         const sc    = this.scrolls;
         const viewH = window.innerHeight;
         const scrollDeltasRel = [];
-        for (const s of sc) scrollDeltasRel.push(Math.abs(s.dy) / viewH);
+        const scrollPositions = [];
+        for (const s of sc) {
+            scrollDeltasRel.push(Math.abs(s.dy) / viewH);
+            if (s.pos !== undefined) scrollPositions.push(s.pos);
+        }
         const scrollInts = [];
         for (let i = 1; i < sc.length; i++) scrollInts.push((sc[i].t - sc[i - 1].t) / 1000);
         let scrollDirChanges = 0;
@@ -314,6 +324,7 @@ export class InputTracker {
             scroll_direction_changes:     scrollDirChanges,
             continuous_scroll_sequences:  contSequences,
             mean_scroll_interval_sec:     _mean(scrollInts),
+            scroll_depth_max:             scrollPositions.length > 0 ? Math.max(...scrollPositions) : 0,
         };
     }
 
@@ -362,6 +373,7 @@ export class InputTracker {
                     entropy_speed: 0,
                 },
                 form,
+                navigation: this._buildNavigation(elapsed),
             };
         }
 
@@ -494,13 +506,32 @@ export class InputTracker {
             scroll,
             heuristics,
             form,
-            navigation: {
-                pages_visited: [],
-                unique_pages: 0,
-                revisit_rate: 0.0,
-                session_duration_sec: elapsed,
-            },
+            navigation: this._buildNavigation(elapsed),
         };
+    }
+
+    _buildNavigation(elapsed) {
+        const visited = this._visitedPages ?? [];
+        const counts  = this._pageVisitCounts ?? {};
+        const totalVisits = Object.values(counts).reduce((a, b) => a + b, 0);
+        const revisits = totalVisits - visited.length;
+        const revisit_rate = totalVisits > 0 ? revisits / totalVisits : 0;
+        return {
+            pages_visited:       [...visited],
+            unique_pages:        visited.length,
+            revisit_rate:        Math.round(revisit_rate * 10000) / 10000,
+            session_duration_sec: elapsed,
+        };
+    }
+
+    _trackPageVisit(pageNum) {
+        if (!this._visitedPages) { this._visitedPages = []; this._pageVisitCounts = {}; }
+        const key = String(pageNum);
+        if (!this._pageVisitCounts[key]) {
+            this._visitedPages.push(key);
+            this._pageVisitCounts[key] = 0;
+        }
+        this._pageVisitCounts[key]++;
     }
 
     _handlePageClick(e) {
@@ -510,6 +541,7 @@ export class InputTracker {
         if (isNaN(pageNum) || pageNum < 1) return;
         try { window.__currentProductPage = pageNum; } catch (ex) {}
         this._lastPage = pageNum;
+        this._trackPageVisit(pageNum);
     }
 
     _handlePaginationMutation(mutations) {
@@ -520,6 +552,7 @@ export class InputTracker {
         if (this._lastPage === v) return;
         this._lastPage = v;
         try { window.__currentProductPage = v; } catch (ex) {}
+        this._trackPageVisit(v);
     }
 
     /** Alias sémantique de computeFeatures(). */

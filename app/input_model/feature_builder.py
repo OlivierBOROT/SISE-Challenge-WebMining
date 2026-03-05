@@ -105,9 +105,9 @@ class InputFeatureBuilder:
         )
 
         scroll_click_ratio = (
-            sc.scroll_depth_max / cl.total_click_events
+            sc.total_scroll_events / cl.total_click_events
             if cl.total_click_events > 0
-            else sc.scroll_depth_max
+            else float(sc.total_scroll_events)
         )
 
         features = {

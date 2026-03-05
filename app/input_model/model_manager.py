@@ -26,6 +26,8 @@ from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.svm import OneClassSVM
 
+import os
+
 from app.schemas import DetectionResult
 from app.input_model.feature_builder import FEATURE_COLUMNS, InputFeatureSet, to_numpy
 from app.utility.storage import load_numpy, record_count
@@ -37,7 +39,7 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────────────────────────────────────
 
 N_FEATURES = len(FEATURE_COLUMNS)   # must stay in sync with feature_service
-_MODELS_DIR = Path(__file__).parent.parent / "models"
+_MODELS_DIR = Path(os.environ.get("DATA_PATH", "data")) / "models"
 _RANDOM_STATE = 42
 
 
