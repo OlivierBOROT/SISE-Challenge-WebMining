@@ -61,7 +61,6 @@ export class EventTracker {
      * dynamiquement par layout.js.
      */
     start() {
-        console.log('[EventTracker] start');
         document.addEventListener("mouseenter", this._onProductEnter, true);
         document.addEventListener("mouseleave", this._onProductLeave, true);
         document.addEventListener("mouseenter", this._onCategoryEnter, true);
@@ -124,14 +123,21 @@ export class EventTracker {
     _handleProductEnter(e) {
         const card = e.target.closest?.(".product-card");
         if (!card) return;
+        // Ignore enter events when coming from an element inside the same card
+        const from = e.relatedTarget;
+        if (from && card.contains(from)) return;
         const id = card.dataset.id ?? card.querySelector("h3")?.textContent ?? "unknown";
         this._productHovers.set(id, { enterTime: performance.now(), element: card });
-        console.log('[EventTracker] product enter', id);
+        
     }
 
     _handleProductLeave(e) {
         const card = e.target.closest?.(".product-card");
         if (!card) return;
+        // Ignore leave events when moving to an element inside the same card
+        const to = e.relatedTarget;
+        if (to && card.contains(to)) return;
+
         const id = card.dataset.id ?? card.querySelector("h3")?.textContent ?? "unknown";
         const entry = this._productHovers.get(id);
         if (!entry) return;
@@ -147,7 +153,6 @@ export class EventTracker {
         });
 
         this._productHovers.delete(id);
-        console.log('[EventTracker] product leave', productId, timeSpent);
     }
 
     _handleProductClick(e) {
@@ -163,7 +168,6 @@ export class EventTracker {
             time_spent: 0,
             event_type: "click",
         });
-        console.log('[EventTracker] product click', productId);
     }
 
     _handleBuyClick(e) {
@@ -179,7 +183,6 @@ export class EventTracker {
             time_spent: 0,
             event_type: "achat",
         });
-        console.log('[EventTracker] buy click', productId);
     }
 
     /* ══════════════════════════════════════════════
@@ -189,14 +192,17 @@ export class EventTracker {
     _handleCategoryEnter(e) {
         const li = e.target.closest?.(".sidebar li, .categories li");
         if (!li) return;
+        const from = e.relatedTarget;
+        if (from && li.contains(from)) return;
         const name = li.dataset.id ?? li.textContent?.trim() ?? "unknown";
         this._categoryHovers.set(name, { enterTime: performance.now(), element: li });
-        console.log('[EventTracker] category enter', name);
     }
 
     _handleCategoryLeave(e) {
         const li = e.target.closest?.(".sidebar li, .categories li");
         if (!li) return;
+        const to = e.relatedTarget;
+        if (to && li.contains(to)) return;
         const name = li.dataset.id ?? li.textContent?.trim() ?? "unknown";
         const entry = this._categoryHovers.get(name);
         if (!entry) return;
@@ -212,7 +218,6 @@ export class EventTracker {
         });
 
         this._categoryHovers.delete(name);
-        console.log('[EventTracker] category leave', name, timeSpent);
     }
 
     _handleCategoryClick(e) {
@@ -226,7 +231,6 @@ export class EventTracker {
             time_spent: 0,
             event_type: "click",
         });
-        console.log('[EventTracker] category click', name);
     }
 
     /* ══════════════════════════════════════════════
@@ -245,6 +249,5 @@ export class EventTracker {
             object: "page",
             page_num: pageNum,
         });
-        console.log('[EventTracker] page click', pageNum);
     }
 }

@@ -25,7 +25,7 @@ function trackInputs() {
             return
         }
 
-        console.log(stats);
+        console.log('POST ajax/track_inputs', stats);
         // Send stats to python
         const response = await fetch('ajax/track_inputs', {
             method: 'POST',
@@ -51,7 +51,7 @@ function trackEvents() {
             return;
         }
 
-        console.log("[EventTracker]", payload);
+        console.log('POST ajax/track_events', payload);
 
         const response = await fetch('ajax/track_events', {
             method: 'POST',
@@ -59,7 +59,8 @@ function trackEvents() {
             body: JSON.stringify(payload),
         });
         const result = await response.json();
-        console.log("[EventTracker] features:", result.features);
+        // Response handling (kept minimal)
+        console.log('RESPONSE ajax/track_events', { ok: response.ok, status: response.status });
     }, 1000);
 }
 

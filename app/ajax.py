@@ -108,8 +108,6 @@ def track_events():
     Returns:
         json: { features: dict, user_id: str }
     """
-    print("Received event tracking data", flush=True)
-    print("debug : ", app.config["DEBUG"], flush=True)
     data = request.json
     user_events = UserEvents(**data)
 
@@ -148,6 +146,8 @@ def track_events():
             current_app.logger.exception("Failed to log behavior features")
             return jsonify({"success": False, "error": "Failed to log features"}), 500
 
+    print("results", flush=True)
+    print(result, flush=True)
     return jsonify(
         {
             "user_id": user_events.user_id,
