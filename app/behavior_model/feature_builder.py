@@ -1,7 +1,7 @@
 from collections import Counter
 import numpy as np
 
-from app.schemas import UserEvents, ProductEvent, CategoryEvent, PageEvent, ScrollEvent
+from app.schemas import UserEvents, ProductEvent, CategoryEvent, ScrollEvent
 
 
 class BehaviourFeatureBuilder:

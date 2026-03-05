@@ -40,7 +40,6 @@ from selenium import webdriver
 from selenium.common.exceptions import (
     ElementNotInteractableException,
     NoSuchElementException,
-    TimeoutException,
 )
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.action_chains import ActionChains
