@@ -45,17 +45,10 @@ def create_app() -> Flask:
 
     # Instantiate services with explicit dependency injection
     with app.app_context():
-        # Storage is foundational; other services depend on it
-        app.storage_service = StorageService()  # type: ignore
-
-        # Stateless services
-        app.product_data = ProductData()  # type: ignore
-        app.feature_service = FeatureService()  # type: ignore
-        app.behavior_service = BehaviorService()  # type: ignore
-
-        # Services that depend on storage
-        app.training_service = TrainingService(storage=app.storage_service)  # type: ignore
-        app.data_connector = DataConnector(storage=app.storage_service)  # type: ignore
+        app.debug = False
+        app.product_data = ProductData()            # type: ignore
+        app.storage_service = StorageService()      # type: ignore
+        app.feature_service = FeatureService()      # type: ignore
 
     # Init pages routes
     from .routes import main as main_blueprint

@@ -3,6 +3,7 @@ body {
   background: #f4f5f7;
   margin: 0;
   color: #333;
+  position: relative;
 }
 
 .header {
@@ -37,7 +38,10 @@ body {
 
 .content {
   display: flex;
-  padding: 20px 40px;
+}
+
+section.categories {
+  margin: 20px 0 20px 40px;
 }
 
 .sidebar {
@@ -47,6 +51,8 @@ body {
   margin-right: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 20px;
 }
 
 .sidebar h2 {
@@ -72,6 +78,7 @@ body {
 
 .products {
   flex: 1;
+  margin: 20px 0px;
 }
 
 .products h1 {
@@ -96,6 +103,11 @@ body {
 
 article:hover {
     transform: translateY(-5px);
+
+    h3 {
+      color: #febd69;
+      text-decoration: underline;
+    }
 }
 
 .product-card img {

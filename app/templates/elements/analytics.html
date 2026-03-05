@@ -1,0 +1,95 @@
+<!-- Bot classification -->
+<div class="widget bot-result" id="bot-widget">
+   <div class="widget-header">
+      <span class="widget-title">Bot Detection</span>
+      <span class="bot-status" id="bot-status">&mdash;</span>
+   </div>
+   <div class="bot-score-row">
+      <span class="bot-score-val" id="bot-score">&mdash;</span>
+      <span class="bot-score-lbl">bot score</span>
+   </div>
+   <div class="bot-bar-track">
+      <div class="bot-bar-fill" id="bot-bar"></div>
+      <div class="bot-bar-threshold"></div>
+   </div>
+   <div class="bot-bar-labels">
+      <span>Human</span>
+      <span>Bot</span>
+   </div>
+</div>
+
+<!-- Cluster Classification -->
+<div class="widget" id="cluster-widget" style="margin-top:10px;">
+   <div class="widget-header">
+      <span class="widget-title">Profil utilisateur</span>
+      <span class="live-badge" id="cluster-badge" style="visibility:hidden"><span class="live-dot"></span>Classifié</span>
+   </div>
+   <div id="cluster-result" style="display:none">
+      <div id="cluster-pill-wrap"></div>
+      <div class="cluster-name" id="cluster-name"></div>
+      <div class="cluster-desc" id="cluster-desc"></div>
+   </div>
+   <div class="descriptions">
+      <div class="cluster-divider"></div>
+      <div class="cluster-all" id="cluster-all"></div>
+   </div>
+   <div style="color:#bbb;font-size:10px;text-align:center;padding:6px 0" id="cluster-pending">En attente de résultat</div>
+   <p id="cluster-more-button">Voir plus</p>
+   </div>
+
+</div>
+
+<div class="graph">
+
+   <!-- Trail + Heatmap (merged) -->
+   <div class="widget mouse-track">
+      <div class="widget-header">
+        <span class="widget-title">Trail &amp; Clicks</span>
+        <span class="live-badge"><span class="live-dot"></span>Live</span>
+      </div>
+      <canvas id="mtCanvas"></canvas>
+      <div class="legend">
+        <span class="legend-lbl">Low</span>
+        <div class="legend-bar"></div>
+        <span class="legend-lbl">High</span>
+      </div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-val" id="mt-dist">0</div>
+          <div class="stat-lbl">Dist px</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="mt-spd">0</div>
+          <div class="stat-lbl">Speed</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="hm-total">0</div>
+          <div class="stat-lbl">Clicks</div>
+        </div>
+      </div>
+    </div>
+
+   <!-- Mouse Speed Plot -->
+   <div class="widget mouse-speed">
+      <div class="widget-header">
+         <span class="widget-title">Mouse Speed</span>
+         <span class="live-badge"><span class="live-dot"></span>15 s</span>
+      </div>
+      <canvas id="spCanvas"></canvas>
+      <div class="stats-row">
+         <div class="stat-box">
+            <div class="stat-val" id="sp-cur">0</div>
+            <div class="stat-lbl">Current</div>
+         </div>
+         <div class="stat-box">
+            <div class="stat-val" id="sp-avg">0</div>
+            <div class="stat-lbl">Avg</div>
+         </div>
+         <div class="stat-box">
+            <div class="stat-val" id="sp-peak">0</div>
+            <div class="stat-lbl">Peak</div>
+         </div>
+      </div>
+   </div>
+
+</div>

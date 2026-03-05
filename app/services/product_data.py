@@ -94,13 +94,13 @@ class ProductData:
         """
         return self.categories
     
-    def paginate(self, data: list[Product], page: int, count=21) -> tuple[list[Product], int]:
+    def paginate(self, data: list[Product], page: int, count=15) -> tuple[list[Product], int]:
         """
         Get paginated product
 
         Args:
             page (int): Page to get
-            count (int, optional): Products per page. Defaults to 20.
+            count (int, optional): Products per page. Defaults to 15.
 
         Returns:
             list[Product]: Paginated products

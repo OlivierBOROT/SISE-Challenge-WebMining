@@ -1,4 +1,7 @@
-import { InputTracker } from './modules/input_tracker.js';
+import { InputTracker } from './modules/inputTracker.js';
+import { drawTrackPlot } from './modules/mouseTrackPlot.js';
+import { drawSpeedPlot } from './modules/mouseSpeedPlot.js';
+import { initUserResult, setClusterResult } from './modules/userResult.js';
 
 const inputTracker = new InputTracker()
 
@@ -10,9 +13,16 @@ function trackInputs() {
     setInterval(async () => {
         const stats = inputTracker.computeFeatures();
         inputTracker.reset();
+        
+        document.dispatchEvent(new CustomEvent('inputTrackerReset', {
+            bubbles: true,
+            cancelable: false
+        }))
+
         if (!stats) {
             return
         }
+
         console.log(stats);
         // Attach optional source label injected externally (e.g. by Selenium bots)
         const payload = { ...stats, _source: window.__TRACKER_SOURCE__ || 'human' };
@@ -30,4 +40,12 @@ function trackInputs() {
 }
 
 
+
+
+// Render analytics plots
+drawTrackPlot();
+drawSpeedPlot();
+initUserResult();
+
+// Track user inputs
 trackInputs();
