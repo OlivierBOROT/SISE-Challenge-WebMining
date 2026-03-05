@@ -91,9 +91,10 @@ def track_inputs():
     data = request.get_json(force=True)
     session_id: str = data.get("session_id")
     stats: dict = data.get("stats")
+    source: str = stats.pop('_source', "human")
 
     behaviour_batch = MouseBehaviorBatch(**stats)
-    result = app.user_service.predict_bot(behaviour_batch, session_id)
+    result = app.user_service.predict_bot(behaviour_batch, session_id, source)
 
     return jsonify({
         "label": result.label,
@@ -116,10 +117,10 @@ def track_events():
     data = request.get_json(force=True)
     session_id: str = data.get("session_id")
     events: dict = data.get("events")
+    source: str = events.pop('_source', "human")
 
-    print(events, flush=True)
     user_events = UserEvents(**events)
-    result = app.user_service.predict_behaviour(user_events, session_id)
+    result = app.user_service.predict_behaviour(user_events, session_id, source)
 
     return jsonify({
         "label": result

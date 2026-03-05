@@ -1,12 +1,51 @@
 from collections import Counter
 import numpy as np
 
-from app.schemas import UserEvents, ProductEvent, CategoryEvent, PageEvent, ScrollEvent
+from app.schemas import UserEvents, ProductEvent, CategoryEvent, PageEvent, ScrollEvent, BehaviourFeatureSet
+
+
+FEATURE_COLUMNS = [
+    "events_per_second",
+    "event_count",
+    "mean_dt",
+    "std_dt",
+    "min_dt",
+    "max_dt",
+    "burstiness",
+    # product interaction
+    "hover_count",
+    "click_count",
+    "purchase_count",
+    # hover behaviour
+    "mean_hover_time",
+    "std_hover_time",
+    "max_hover_time",
+    "long_hover_ratio",
+    "short_hover_ratio",
+    # product structure
+    "unique_products",
+    "product_diversity",
+    "product_focus_score",
+    # category structure
+    "unique_categories",
+    "category_diversity",
+    # entropy
+    "product_entropy",
+    "category_entropy",
+    # scroll behaviour
+    "scroll_events",
+    "total_scroll_distance",
+    "scroll_speed",
+    "scroll_std",
+    "large_scroll_ratio",
+    # interaction ratios
+    "hover_click_ratio",
+]
 
 
 class BehaviourFeatureBuilder:
     @staticmethod
-    def build(user_events: UserEvents) -> dict:
+    def build(user_events: UserEvents) -> BehaviourFeatureSet:
         """
         Transforme une liste d'événements en vecteur de features.
 
@@ -58,8 +97,6 @@ class BehaviourFeatureBuilder:
         scroll_deltas = []
 
         for e in events:
-            obj = e.object
-
             if isinstance(e, ProductEvent):
                 product_ids.append(e.product_id)
 
@@ -153,7 +190,9 @@ class BehaviourFeatureBuilder:
         # ---------- ratios ----------
         hover_click_ratio = hover_count / (click_count + 1)
 
+
         # ---------- final feature vector ----------
+
         features = {
             # activity
             "events_per_second": events_per_second,
@@ -193,5 +232,14 @@ class BehaviourFeatureBuilder:
             # interaction ratios
             "hover_click_ratio": hover_click_ratio,
         }
+
+        vector = [features[col] for col in FEATURE_COLUMNS]
+
+        return BehaviourFeatureSet(
+            features=features,
+            vector=vector,
+        )
+
+        
 
         return features

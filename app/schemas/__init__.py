@@ -15,7 +15,7 @@ from .event_behavior_schema import (
     PageEvent,
     ScrollEvent,
 )
-from .feature_schema import InputFeatureSet
+from .feature_schema import InputFeatureSet, BehaviourFeatureSet
 from .product_schema import Product
 from .user_session_schema import UserSession
 
@@ -30,6 +30,7 @@ __all__ = [
     "Product",
     "UserSession",
     "InputFeatureSet",
+    "BehaviourFeatureSet",
     "DetectionResult",
     "UserEvents",
     "ProductEvent",

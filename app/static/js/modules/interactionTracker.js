@@ -146,6 +146,7 @@ export class EventTracker {
         const timeSpent = (performance.now() - entry.enterTime) / 1000; // secondes
         const productId = card.dataset.id ?? id;
         this.events.push({
+            batch_t:    Date.now() - this.sessionStart,
             timestamp: this._now(),
             object: "product",
             product_id: productId,
@@ -163,6 +164,7 @@ export class EventTracker {
         if (e.target.closest("button")) return;
         const productId = card.dataset.id ?? card.querySelector("h3")?.textContent ?? "unknown";
         this.events.push({
+            batch_t:    Date.now() - this.sessionStart,
             timestamp: this._now(),
             object: "product",
             product_id: productId,
@@ -178,6 +180,7 @@ export class EventTracker {
         const card = btn.closest(".product-card");
         const productId = card.dataset.id ?? card.querySelector("h3")?.textContent ?? "unknown";
         this.events.push({
+            batch_t:    Date.now() - this.sessionStart,
             timestamp: this._now(),
             object: "product",
             product_id: productId,
@@ -211,6 +214,7 @@ export class EventTracker {
         const timeSpent = (performance.now() - entry.enterTime) / 1000;
 
         this.events.push({
+            batch_t:    Date.now() - this.sessionStart,
             timestamp: this._now(),
             object: "category",
             category_id: name,
@@ -226,6 +230,7 @@ export class EventTracker {
         if (!li) return;
         const name = li.dataset.id ?? li.textContent?.trim() ?? "unknown";
         this.events.push({
+            batch_t:    Date.now() - this.sessionStart,
             timestamp: this._now(),
             object: "category",
             category_id: name,
@@ -246,6 +251,7 @@ export class EventTracker {
         if (isNaN(pageNum) || pageNum < 1) return;
 
         this.events.push({
+            batch_t:    Date.now() - this.sessionStart,
             timestamp: this._now(),
             object: "page",
             page_num: pageNum,
@@ -269,7 +275,8 @@ export class EventTracker {
         const ratio = Math.min(1, Math.max(0, newPos / maxScroll));
 
         this.events.push({
-            timestamp: Date.now() / 1000,
+            batch_t:    Date.now() - this.sessionStart,
+            timestamp: this._now(),
             object: 'scroll',
             delta_y: delta,
             scroll_position: Number(ratio.toFixed(4)),
@@ -284,7 +291,8 @@ export class EventTracker {
         const ratio = Math.min(1, Math.max(0, pos / maxScroll));
         // record with same shape as ScrollEvent
         this.events.push({
-            timestamp: Date.now() / 1000,
+            batch_t:    Date.now() - this.sessionStart,
+            timestamp: this._now(),
             object: 'scroll',
             delta_y: delta,
             scroll_position: Number(ratio.toFixed(4)),
