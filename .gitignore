@@ -97,3 +97,4 @@ scrapping.ipynb
 fix_json.ipynb
 
 data/features.jsonl
+data/features/*
