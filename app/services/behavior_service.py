@@ -60,6 +60,14 @@ class BehaviorService:
         seen `page` event from `events` (object == "page" and key `page_num`).
         The default JSONL path is `data/behavior_features.jsonl`.
         """
+        data_path = os.getenv("DATA_PATH", "data")
+        if jsonl_path is None:
+            jsonl_path = Path(data_path) / "features" / "behavior_features.jsonl"
+        else:
+            jsonl_path = Path(jsonl_path)
+
+        jsonl_path.parent.mkdir(parents=True, exist_ok=True)
+
         current_time = time.time()
         features = self.feature_builder.build(events, current_time=current_time)
         print("features", flush=True)
@@ -73,12 +81,6 @@ class BehaviorService:
                         break
                     except Exception:
                         continue
-
-        if jsonl_path is None:
-            jsonl_path = Path("data") / "behavior_features.jsonl"
-        else:
-            jsonl_path = Path(jsonl_path)
-        jsonl_path.parent.mkdir(parents=True, exist_ok=True)
 
         row = {
             "session_id": session_id or "unknown",

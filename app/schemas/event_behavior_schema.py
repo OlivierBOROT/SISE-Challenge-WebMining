@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, confloat, conint
 # ----------------------------
 class BaseEvent(BaseModel):
     timestamp: float = Field(..., description="Unix timestamp de l'événement")
-    object: Literal["product", "category", "page"] = Field(
+    object: Literal["product", "category", "page", "scroll"] = Field(
         ..., description="Type d'objet"
     )
 
@@ -47,9 +47,17 @@ class PageEvent(BaseEvent):
     page_num: conint(ge=1)
 
 
+class ScrollEvent(BaseEvent):
+    object: Literal["scroll"]
+    delta_y: float = Field(..., description="Delta Y du scroll (px)")
+    scroll_position: float = Field(
+        ..., description="Position de scroll normalisée (0.0-1.0)"
+    )
+
+
 # ----------------------------
 # Wrapper pour les événements utilisateur
 # ----------------------------
 class UserEvents(BaseModel):
     user_id: str
-    events: List[Union[ProductEvent, CategoryEvent, PageEvent]]
+    events: List[Union[ProductEvent, CategoryEvent, PageEvent, ScrollEvent]]

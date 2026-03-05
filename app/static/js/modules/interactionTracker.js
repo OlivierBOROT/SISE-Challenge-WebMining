@@ -49,6 +49,10 @@ export class EventTracker {
         this._onCategoryLeave = this._handleCategoryLeave.bind(this);
         this._onCategoryClick = this._handleCategoryClick.bind(this);
         this._onPageClick     = this._handlePageClick.bind(this);
+        this._onScroll        = this._handleScroll.bind(this);
+        this._onWheel         = this._handleWheel.bind(this);
+        this._lastScrollPos = 0;
+        this._lastScrollTs = 0;
     }
 
     /* ══════════════════════════════════════════════
@@ -71,6 +75,7 @@ export class EventTracker {
         document.addEventListener("click", this._onBuyClick);
         document.addEventListener("click", this._onCategoryClick);
         document.addEventListener("click", this._onPageClick);
+        document.addEventListener('wheel', this._onWheel, { passive: true });
     }
 
     stop() {
@@ -83,6 +88,7 @@ export class EventTracker {
         document.removeEventListener("click", this._onBuyClick);
         document.removeEventListener("click", this._onCategoryClick);
         document.removeEventListener("click", this._onPageClick);
+        document.removeEventListener('wheel', this._onWheel, { passive: true });
     }
 
     /**
@@ -249,5 +255,46 @@ export class EventTracker {
             object: "page",
             page_num: pageNum,
         });
+    }
+
+    /* ══════════════════════════════════════════════
+       Handlers — Scroll
+       ══════════════════════════════════════════════ */
+
+    _handleScroll(e) {
+        const now = performance.now();
+        // throttle to ~100ms to avoid huge flood of events
+        if (now - this._lastScrollTs < 50) return;
+        const newPos = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+        const delta = newPos - (this._lastScrollPos || 0);
+        this._lastScrollPos = newPos;
+        this._lastScrollTs = now;
+
+        const maxScroll = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1);
+        const ratio = Math.min(1, Math.max(0, newPos / maxScroll));
+
+        this.events.push({
+            timestamp: Date.now() / 1000,
+            object: 'scroll',
+            delta_y: delta,
+            scroll_position: Number(ratio.toFixed(4)),
+        });
+    }
+
+    _handleWheel(e) {
+        // Wheel events give immediate deltaY values (positive = down)
+        const delta = e.deltaY || 0;
+        const pos = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+        const maxScroll = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1);
+        const ratio = Math.min(1, Math.max(0, pos / maxScroll));
+        // record with same shape as ScrollEvent
+        this.events.push({
+            timestamp: Date.now() / 1000,
+            object: 'scroll',
+            delta_y: delta,
+            scroll_position: Number(ratio.toFixed(4)),
+        });
+        this._lastScrollPos = pos;
+        this._lastScrollTs = performance.now();
     }
 }

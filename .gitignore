@@ -91,6 +91,7 @@ logs/
 docs/notes.md
 uv.lock
 BACKLOG.md
+data/features/**
 
 scrapping.ipynb
 fix_json.ipynb
