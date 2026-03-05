@@ -22,9 +22,6 @@ class BehaviourModelManager:
         kmeans_path = kwargs.get(
             "kmeans_path", os.path.join(model_path, "kmeans_final.joblib")
         )
-        pca_projected_data_path = kwargs.get(
-            "pca_projected_data", os.path.join(model_path, "features_pca_fit.npy")
-        )
 
         if not os.path.exists(scaler_path):
             raise FileNotFoundError(f"Scaler model not found at {scaler_path}")
@@ -32,16 +29,10 @@ class BehaviourModelManager:
             raise FileNotFoundError(f"PCA model not found at {pca_path}")
         if not os.path.exists(kmeans_path):
             raise FileNotFoundError(f"KMeans model not found at {kmeans_path}")
-        if not os.path.exists(pca_projected_data_path):
-            raise FileNotFoundError(
-                f"PCA projected data not found at {pca_projected_data_path}"
-            )
 
         self.scaler = load(scaler_path)
         self.pca = load(pca_path)
         self.kmeans = load(kmeans_path)
-
-        self.pca_projected_data = np.load(pca_projected_data_path)
 
     def predict(self, features: BehaviourFeatureSet) -> Dict[str, Any]:
         X = np.array([features.vector], dtype=float)
