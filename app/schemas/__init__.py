@@ -8,7 +8,13 @@ from .bot_analysis_schema import (
     NavigationMetrics,
     ScrollMetrics,
 )
-from .event_behavior_schema import UserEvents
+from .event_behavior_schema import (
+    UserEvents,
+    ProductEvent,
+    CategoryEvent,
+    PageEvent,
+    ScrollEvent,
+)
 from .feature_schema import InputFeatureSet
 from .product_schema import Product
 from .user_session_schema import UserSession
@@ -26,4 +32,8 @@ __all__ = [
     "InputFeatureSet",
     "DetectionResult",
     "UserEvents",
+    "ProductEvent",
+    "CategoryEvent",
+    "PageEvent",
+    "ScrollEvent",
 ]

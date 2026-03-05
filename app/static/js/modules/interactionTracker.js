@@ -10,7 +10,6 @@
  *   - PageEvent     : changement de page (pagination)
  *
  * Usage :
- *   const tracker = new EventTracker({ userId: 'abc123' });
  *   tracker.start();
  *   // ... plus tard ...
  *   const payload = tracker.flush();   // { user_id, events }
@@ -24,10 +23,8 @@
 export class EventTracker {
     /**
      * @param {object} [opts]
-     * @param {string} [opts.userId]  Identifiant utilisateur (UUID ou autre).
      */
     constructor(opts = {}) {
-        this.userId = opts.userId ?? crypto.randomUUID();
 
         /** @type {Array<object>} Liste des événements collectés */
         this.events = [];
@@ -97,7 +94,6 @@ export class EventTracker {
      */
     flush() {
         const payload = {
-            user_id: this.userId,
             events: [...this.events],
         };
         this.events = [];
@@ -110,7 +106,6 @@ export class EventTracker {
      */
     peek() {
         return {
-            user_id: this.userId,
             events: [...this.events],
         };
     }

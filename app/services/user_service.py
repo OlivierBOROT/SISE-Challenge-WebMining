@@ -1,6 +1,6 @@
-from app.input_model import InputFeatureBuilder
-from app.input_model import InputModelManager
-from app.schemas import UserSession, MouseBehaviorBatch, DetectionResult
+from app.input_model import InputFeatureBuilder, InputModelManager
+from app.behavior_model import BehaviourFeatureBuilder, BehaviourModelManager
+from app.schemas import UserSession, MouseBehaviorBatch, UserEvents, DetectionResult
 
 class UserService:
 
@@ -9,29 +9,42 @@ class UserService:
     def __init__(self) -> None:
         self.input_feature_builder = InputFeatureBuilder()
         self.input_model_manager = InputModelManager()
+        
+        self.behaviour_feature_builder = BehaviourFeatureBuilder()
+        self.behaviour_model_manager = BehaviourModelManager()
 
-    def create_session(self) -> UserSession:
+    def create_session(self, id: str|None = None) -> UserSession:
         """
         Create a new user session
 
         Returns:
             UserSession: Created user session
         """
-        s = UserSession()
+        if id:
+            s = UserSession(id=id)
+        else:
+            s = UserSession()
+
         self.sessions[s.id] = s
         return s
 
-    def get_session(self, id: str) -> UserSession|None:
+    def get_session(self, id: str, fall_back = True) -> UserSession|None:
         """
         Retrive a user session from its ID
 
         Args:
             id (str): Session ID
+            fall_back (bool): Whether to create a session if not found
 
         Returns:
             UserSession
         """
-        return self.sessions.get(id)
+        session = self.sessions.get(id)
+
+        if not session and fall_back:
+            session = self.create_session(id=id)
+
+        return session
     
     def predict_bot(self, behaviour_batch: MouseBehaviorBatch, session_id: str) -> DetectionResult:
         """
@@ -56,13 +69,28 @@ class UserService:
         return result
 
 
-    # def predict_behaviour(self, events: list[dict]) -> dict:
-    #     """
-    #     Validate features with FeatureSe, run prediction and return results
+    def predict_behaviour(self, events: UserEvents, session_id: str) -> int|None:
+        """
+        Validate features with FeatureSe, run prediction and return results
 
-    #     Args:
-    #         features (dict): Input features
+        Args:
+            features (dict): Input features
 
-    #     Returns:
-    #         dict: Prediction result
-    #     """
+        Returns:
+            int: Prediction label
+        """
+        session = self.get_session(session_id)
+        if not session:
+            raise IndexError(f"No session found with id: {session_id}")
+        
+        window = session.behaviour_window.window(events.events)
+        if not window:
+            return None
+
+        features = self.behaviour_feature_builder.build(events)
+        
+        result = self.behaviour_model_manager.predict(features)
+        session.behaviour_features = features
+        session.behaviour_prediction = result
+
+        return result
