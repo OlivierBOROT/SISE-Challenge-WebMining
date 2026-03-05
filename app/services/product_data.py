@@ -4,7 +4,7 @@ import math
 
 from rapidfuzz import process
 
-from app.models import Product
+from app.schemas import Product
 
 
 
