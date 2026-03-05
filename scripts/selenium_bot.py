@@ -245,18 +245,22 @@ class DirectBot(BotPersona):
             if categories:
                 target = random.choice(categories)
                 self._js_click(driver, target)
-                time.sleep(0.5)
+                time.sleep(random.uniform(0.3, 0.7))
 
             # Click products via JS (no mouse movement)
             products = self._find_products(driver)
-            for product in random.sample(products, min(3, len(products))):
+            click_interval = random.uniform(0.08, 0.14)  # uniform within batch
+            for product in random.sample(products, min(random.randint(2, 4), len(products))):
                 self._js_click(driver, product)
-                time.sleep(0.1)  # identical interval — bot signature
+                time.sleep(click_interval)
 
-            # Instant scroll via JS
-            for y in range(0, 2000, 200):
+            # Instant scroll via JS — vary step and max depth per batch
+            scroll_step = random.randint(150, 250)
+            scroll_max = random.randint(1500, 2500)
+            scroll_interval = random.uniform(0.04, 0.07)  # still uniform
+            for y in range(0, scroll_max, scroll_step):
                 self._scroll_to(driver, y)
-                time.sleep(0.05)  # perfectly uniform scroll timing
+                time.sleep(scroll_interval)
 
             self._wait_batch(batch_start)
 
@@ -280,11 +284,15 @@ class LinearBot(BotPersona):
             batch_start = time.time()
             logger.info(f"[{self.source_label}] Batch {batch + 1}/{self.cfg.batches}")
 
-            # Dispatch synthetic mousemove events in perfectly straight horizontal
-            # lines — uses JS to avoid ActionChains coordinate bounds issues while
-            # still feeding events into the tracker (isTrusted=false is fine).
-            y_positions = [int(vp_height * r) for r in [0.2, 0.4, 0.6, 0.8]]
-            step = max(1, vp_width // 12)
+            # Dispatch synthetic mousemove events in perfectly straight lines.
+            # Vary the number of lines, step size, and speed slightly each batch
+            # so the pattern stays "robotic linear" without being bit-for-bit
+            # identical — prevents supervised models from memorising exact values.
+            n_lines = random.randint(3, 5)
+            ratios = sorted(random.uniform(0.15, 0.85) for _ in range(n_lines))
+            y_positions = [int(vp_height * r) for r in ratios]
+            step = max(1, vp_width // random.randint(10, 14))
+            interval = random.uniform(0.04, 0.07)  # still uniform within each batch
             for y in y_positions:
                 for x in range(step, vp_width - step, step):
                     driver.execute_script(
@@ -292,7 +300,7 @@ class LinearBot(BotPersona):
                         "{bubbles:true,clientX:arguments[0],clientY:arguments[1]}));",
                         x, y,
                     )
-                    time.sleep(0.05)  # perfectly uniform 50ms steps — bot signature
+                    time.sleep(interval)
 
             # Click a product with zero hesitation
             products = self._find_products(driver)
@@ -304,10 +312,12 @@ class LinearBot(BotPersona):
                     self._js_click(driver, target)
                 time.sleep(0.1)
 
-            # Uniform scroll
+            # Uniform scroll — vary amount slightly per batch
+            scroll_amount = random.randint(250, 350)
+            scroll_interval = random.uniform(0.18, 0.24)
             for _ in range(5):
-                self._scroll_by(driver, 300)
-                time.sleep(0.2)  # constant 200ms interval
+                self._scroll_by(driver, scroll_amount)
+                time.sleep(scroll_interval)
 
             self._wait_batch(batch_start)
 
@@ -330,16 +340,19 @@ class ScanBot(BotPersona):
             batch_start = time.time()
             logger.info(f"[{self.source_label}] Batch {batch + 1}/{self.cfg.batches}")
 
-            # Scroll down the full page in perfectly uniform steps
-            step = 150
+            # Scroll down the full page in perfectly uniform steps — vary
+            # step and interval per batch so supervised models learn the
+            # uniformity pattern, not a specific value.
+            step = random.randint(120, 180)
+            interval = random.uniform(0.06, 0.11)  # still uniform within batch
             for y in range(0, page_height, step):
                 self._scroll_to(driver, y)
-                time.sleep(0.08)   # perfectly uniform 80ms — bot signature
+                time.sleep(interval)
 
             # Scroll back to top identically
             for y in range(page_height, 0, -step):
                 self._scroll_to(driver, y)
-                time.sleep(0.08)
+                time.sleep(interval)
 
             # Load a different AJAX category without mouse movement
             categories = self._find_category_links(driver)
@@ -361,25 +374,29 @@ class BurstBot(BotPersona):
     """Fires rapid click bursts with identical timing — classic scraper pattern."""
 
     source_label = "bot_burst"
-    BURST_INTERVAL = 0.12   # exactly 120ms between every click
 
     def _run_session(self, driver: webdriver.Chrome) -> None:
         for batch in range(self.cfg.batches):
             batch_start = time.time()
             logger.info(f"[{self.source_label}] Batch {batch + 1}/{self.cfg.batches}")
 
-            # Burst click all visible products with identical intervals
+            # Pick a burst interval that is uniform within this batch but varies
+            # across batches — signature is the uniformity, not the exact value.
+            burst_interval = random.uniform(0.10, 0.15)
+
+            # Burst click products with identical intervals
             products = self._find_products(driver)
-            for product in products[:8]:
+            n_clicks = random.randint(5, 9)
+            for product in products[:n_clicks]:
                 self._js_click(driver, product)
-                time.sleep(self.BURST_INTERVAL)  # perfectly identical intervals
+                time.sleep(burst_interval)  # perfectly identical intervals
 
             # Rapid category cycling
             categories = self._find_category_links(driver)
             for cat in categories:
                 try:
                     self._js_click(driver, cat)
-                    time.sleep(self.BURST_INTERVAL)  # same interval everywhere
+                    time.sleep(burst_interval)  # same interval everywhere
                 except Exception:
                     continue
 
@@ -396,8 +413,6 @@ class CautiousBot(BotPersona):
     """Moves slowly and uniformly — tries to look human but has zero speed variance."""
 
     source_label = "bot_cautious"
-    MOVE_STEP_PX = 8    # pixels per step
-    MOVE_DELAY = 0.03   # exactly 30ms per step — giveaway uniform timing
 
     def _run_session(self, driver: webdriver.Chrome) -> None:
         vp_width = driver.execute_script("return window.innerWidth")
@@ -408,8 +423,10 @@ class CautiousBot(BotPersona):
             logger.info(f"[{self.source_label}] Batch {batch + 1}/{self.cfg.batches}")
 
             # Move toward a product using JS-dispatched events at constant speed.
-            # We compute the in-viewport path after scrolling the element into view,
-            # which keeps all coordinates inside the visible area.
+            # Vary step size and delay per batch — signature is zero variance
+            # within a batch, not the specific pixel/ms values.
+            move_step_px = random.randint(6, 11)
+            move_delay = random.uniform(0.025, 0.040)  # still uniform within batch
             products = self._find_products(driver)
             if products:
                 target = random.choice(products)
@@ -429,7 +446,7 @@ class CautiousBot(BotPersona):
                 start_x, start_y = vp_width // 2, vp_height // 2
                 dx = target_x - start_x
                 dy = target_y - start_y
-                steps = max(1, max(abs(dx), abs(dy)) // self.MOVE_STEP_PX)
+                steps = max(1, max(abs(dx), abs(dy)) // move_step_px)
                 for i in range(steps):
                     x = start_x + int(dx * i / steps)
                     y = start_y + int(dy * i / steps)
@@ -438,7 +455,7 @@ class CautiousBot(BotPersona):
                         "{bubbles:true,clientX:arguments[0],clientY:arguments[1]}));",
                         x, y,
                     )
-                    time.sleep(self.MOVE_DELAY)  # exactly 30ms — uniform bot signature
+                    time.sleep(move_delay)  # uniform within batch — bot signature
 
                 # Click with no hold time
                 try:
@@ -446,10 +463,13 @@ class CautiousBot(BotPersona):
                 except Exception:
                     self._js_click(driver, target)
 
-            # Uniform scrolling
-            for _ in range(8):
-                self._scroll_by(driver, 200)
-                time.sleep(0.5)  # constant 500ms interval
+            # Uniform scrolling — vary amount and count per batch
+            scroll_amount = random.randint(170, 230)
+            scroll_interval = random.uniform(0.45, 0.60)
+            n_scrolls = random.randint(6, 10)
+            for _ in range(n_scrolls):
+                self._scroll_by(driver, scroll_amount)
+                time.sleep(scroll_interval)  # constant interval — bot signature
 
             self._wait_batch(batch_start)
 

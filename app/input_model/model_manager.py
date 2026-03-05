@@ -30,7 +30,7 @@ import os
 
 from app.schemas import DetectionResult
 from app.input_model.feature_builder import FEATURE_COLUMNS, InputFeatureSet, to_numpy
-from app.utility.storage import load_numpy, record_count
+from app.utility.storage import StorageService, load_numpy, record_count
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 N_FEATURES = len(FEATURE_COLUMNS)   # must stay in sync with feature_service
 _MODELS_DIR = Path(os.environ.get("DATA_PATH", "data")) / "models"
+_INPUT_FEATURES_JSONL = "features/input_features.jsonl"
 _RANDOM_STATE = 42
 
 
@@ -211,8 +212,6 @@ class InputModelManager:
 
             # E — Session / Navigation
             rng.lognormal(3.5, 0.7, n),                            # session_duration (>10s)
-            rng.integers(1, 6, n).astype(float),                   # pages_visited
-            rng.beta(1.5, 6, n),                                   # revisit_rate
             rng.uniform(0.05, 0.6, n),                             # scroll_click_ratio
         ])
         # fmt: on
@@ -252,10 +251,11 @@ class InputModelManager:
             parts.append(real)
 
         if use_stored:
-            n = record_count()
-            if n > 0:
-                parts.append(load_numpy())
-                logger.debug(f"Loaded {n} stored records from data/features.jsonl")
+            _storage = StorageService(_INPUT_FEATURES_JSONL, InputFeatureSet)
+            human_sets = _storage.load_feature_sets(source="human")
+            if human_sets:
+                parts.append(np.vstack([to_numpy(fs) for fs in human_sets]))
+                logger.debug(f"Loaded {len(human_sets)} stored human records from {_INPUT_FEATURES_JSONL}")
 
         if n_synthetic > 0:
             parts.append(self._generate_human_samples(n_synthetic))

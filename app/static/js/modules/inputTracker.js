@@ -120,13 +120,7 @@ export class InputTracker {
         this._onWheel  = this._handleWheel.bind(this);
         this._onFocusIn  = this._handleFocusIn.bind(this);
         this._onFocusOut = this._handleFocusOut.bind(this);
-        this._onPageClick = this._handlePageClick.bind(this);
-        this._onPaginationMut = this._handlePaginationMutation.bind(this);
-        this._paginationObserver = null;
-        this._lastPage = window.__currentProductPage ?? null;
-        // Persists across batches (like sessionStart) — never reset()
-        if (!this._visitedPages) this._visitedPages = [];
-        if (!this._pageVisitCounts) this._pageVisitCounts = {};
+
     }
 
     /* ── Cycle de vie ── */
@@ -138,20 +132,6 @@ export class InputTracker {
         document.addEventListener("wheel",     this._onWheel,  { passive: true });
         document.addEventListener("focusin",   this._onFocusIn);
         document.addEventListener("focusout",  this._onFocusOut);
-        document.addEventListener("click", this._onPageClick);
-
-        // Observe pagination DOM changes (for SPA or programmatic updates)
-        try {
-            const pagesRoot = document.querySelectorAll('.pagination-pages');
-            if (pagesRoot && pagesRoot.length) {
-                this._paginationObserver = new MutationObserver(this._onPaginationMut);
-                pagesRoot.forEach((el) =>
-                    this._paginationObserver.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
-                );
-            }
-        } catch (err) {
-            // ignore observer errors in older browsers
-        }
     }
 
     stop() {
@@ -161,11 +141,6 @@ export class InputTracker {
         document.removeEventListener("wheel",     this._onWheel);
         document.removeEventListener("focusin",   this._onFocusIn);
         document.removeEventListener("focusout",  this._onFocusOut);
-        document.removeEventListener("click", this._onPageClick);
-        if (this._paginationObserver) {
-            try { this._paginationObserver.disconnect(); } catch (e) {}
-            this._paginationObserver = null;
-        }
     }
 
     /* ── Handlers ── */
@@ -511,48 +486,7 @@ export class InputTracker {
     }
 
     _buildNavigation(elapsed) {
-        const visited = this._visitedPages ?? [];
-        const counts  = this._pageVisitCounts ?? {};
-        const totalVisits = Object.values(counts).reduce((a, b) => a + b, 0);
-        const revisits = totalVisits - visited.length;
-        const revisit_rate = totalVisits > 0 ? revisits / totalVisits : 0;
-        return {
-            pages_visited:       [...visited],
-            unique_pages:        visited.length,
-            revisit_rate:        Math.round(revisit_rate * 10000) / 10000,
-            session_duration_sec: elapsed,
-        };
-    }
-
-    _trackPageVisit(pageNum) {
-        if (!this._visitedPages) { this._visitedPages = []; this._pageVisitCounts = {}; }
-        const key = String(pageNum);
-        if (!this._pageVisitCounts[key]) {
-            this._visitedPages.push(key);
-            this._pageVisitCounts[key] = 0;
-        }
-        this._pageVisitCounts[key]++;
-    }
-
-    _handlePageClick(e) {
-        const btn = e.target.closest?.('.pagination button, .pagination-btn, .page-number');
-        if (!btn) return;
-        const pageNum = parseInt(btn.value, 10);
-        if (isNaN(pageNum) || pageNum < 1) return;
-        try { window.__currentProductPage = pageNum; } catch (ex) {}
-        this._lastPage = pageNum;
-        this._trackPageVisit(pageNum);
-    }
-
-    _handlePaginationMutation(mutations) {
-        const active = document.querySelector('.pagination-pages .page-number.active, .pagination .page-number.active');
-        if (!active) return;
-        const v = parseInt(active.value, 10);
-        if (isNaN(v)) return;
-        if (this._lastPage === v) return;
-        this._lastPage = v;
-        try { window.__currentProductPage = v; } catch (ex) {}
-        this._trackPageVisit(v);
+        return { session_duration_sec: elapsed };
     }
 
     /** Alias sémantique de computeFeatures(). */
