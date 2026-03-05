@@ -129,6 +129,7 @@ export function drawSpeedPlot() {
 
     // ── Reset ──
     document.addEventListener('inputTrackerReset', () => {
+        return
         samples.length = 0;
         lastX = lastY = lastT = 0;
         peakSpeed = 0;

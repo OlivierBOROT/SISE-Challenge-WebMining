@@ -7,6 +7,8 @@ from .bot_analysis_schema import (
     NavigationMetrics,
     ScrollMetrics,
 )
+from app.schemas.product_schema import Product
+from app.schemas.user_session_schema import UserSession
 
 __all__ = [
     "MovementMetrics",
@@ -16,4 +18,6 @@ __all__ = [
     "FormMetrics",
     "NavigationMetrics",
     "MouseBehaviorBatch",
+    "Product",
+    "UserSession"
 ]

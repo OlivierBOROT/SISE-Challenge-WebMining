@@ -37,7 +37,6 @@ export function initUserResult () {
 }
 
 export function setClusterResult(clusterId) {
-    console.log('hello');
     const c = CLUSTERS.find(x => x.id === clusterId);
     if (!c) return;
 

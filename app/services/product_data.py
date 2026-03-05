@@ -3,8 +3,11 @@ import logging
 import math
 import os
 from dataclasses import dataclass
+from rapidfuzz import process
+from app.schemas import Product
 
 logger = logging.getLogger(__name__)
+
 
 
 @dataclass
@@ -46,6 +49,27 @@ class ProductData:
             ]
 
         return products, categories
+    
+    def search(self, query: str, score_cutoff=60) -> list[Product]:
+        """
+        Retrieve a list of product by query
+
+        Args:
+            query (str): Query to retrive corresponding product
+
+        Returns:
+            list[Product]: Corresponding products
+        """
+        titles = [p.title for p in self.data]
+        matches = process.extract(
+            query,
+            titles,
+            limit=26,
+            score_cutoff=score_cutoff
+        )
+
+        title_to_product = {p.title: p for p in self.data}
+        return [title_to_product[match[0]] for match in matches]
         
     def get_all(self) -> list[Product]:
         """

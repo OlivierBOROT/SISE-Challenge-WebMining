@@ -19,4 +19,5 @@ dependencies = [
 # Data generation: pip install -e ".[bots]"
 bots = [
     "selenium>=4.0",
+    "rapidfuzz>=3.14.3",
 ]
