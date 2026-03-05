@@ -35,6 +35,9 @@ body {
   cursor: pointer;
   font-weight: bold;
 }
+.search-bar:focus {
+  outline: solid 2px #febd69;
+}
 
 .content {
   display: flex;

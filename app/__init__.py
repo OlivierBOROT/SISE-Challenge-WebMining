@@ -11,11 +11,8 @@ from flask import Flask
 
 from app.services import (
     BehaviorService,
-    DataConnector,
-    FeatureService,
     ProductData,
-    StorageService,
-    TrainingService,
+    UserService,
 )
 
 
@@ -23,9 +20,7 @@ class AppContext(Flask):
     """Flask app extended with service instances for dependency injection."""
 
     product_data: ProductData
-    storage_service: StorageService
-    feature_service: FeatureService
-    training_service: TrainingService
+    user_service: UserService
     data_connector: DataConnector
     behavior_service: BehaviorService
 
@@ -48,9 +43,7 @@ def create_app() -> Flask:
     with app.app_context():
         app.debug = False
         app.product_data = ProductData()  # type: ignore
-        app.storage_service = StorageService()  # type: ignore
-        app.feature_service = FeatureService()  # type: ignore
-        app.behavior_service = BehaviorService()  # type: ignore
+        app.user_service = UserService()  # type: ignore
 
     # Init pages routes
     from .routes import main as main_blueprint

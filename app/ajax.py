@@ -16,6 +16,7 @@ from app import AppContext
 # Use BehaviorService via app.behavior_service (do not import FeatureBuilder here)
 from app.schemas import MouseBehaviorBatch, UserEvents
 
+app = cast(AppContext, current_app)
 # Create blueprint
 ajax = Blueprint("ajax", __name__)
 
@@ -31,7 +32,6 @@ def render_categories():
     Returns:
         HTML: Categories menu section
     """
-    app = cast(AppContext, current_app)
     categories = app.product_data.get_available_categories()
     return render_template("elements/categories.html", categories=categories)
 
@@ -48,11 +48,13 @@ def render_products():
     Returns:
         html: Product result section
     """
-    app = cast(AppContext, current_app)
     category = request.args.get("category", "all")
+    query = request.args.get("query")
     page = request.args.get("page", 0, type=int)
 
-    if category == "all":
+    if query:
+        products = app.product_data.search(query)
+    elif category == "all":
         products = app.product_data.get_all()
     else:
         products = app.product_data.get_by_category(category)
@@ -62,6 +64,7 @@ def render_products():
     return render_template(
         "elements/products.html",
         category=category,
+        query=query,
         products=products,
         page=page,
         max_page=max_page,
@@ -77,7 +80,10 @@ def track_inputs():
     Predict bot / user label from client inputs
 
     Arguments:
-        json: client input metrics
+        json: {
+            "session_id": session id
+            "stats": client input metrics
+        }
 
     Returns:
         json: {
@@ -85,15 +91,14 @@ def track_inputs():
             "bot_score": int
         }
     """
-    app = cast(AppContext, current_app)  ###
-    stats = dict(request.json)  # type: ignore
-    source = stats.pop("_source", "human")  # injected by bots; defaults to human
+    data = request.get_json(force=True)
+    session_id: str = data.get("session_id")
+    stats: dict = data.get("stats")
+
     behaviour_batch = MouseBehaviorBatch(**stats)
+    result = app.user_service.predict_bot(behaviour_batch, session_id)
 
-    feature_set = app.feature_service.extract(behaviour_batch)
-    app.storage_service.append(feature_set, source=source)
-
-    return jsonify({"success": True})
+    return jsonify({"label": result.label, "score": result.score})
 
 
 @ajax.route("/track_events", methods=["POST"])

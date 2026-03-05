@@ -1,3 +1,4 @@
+from .bot_analysis_answer_schema import DetectionResult
 from .bot_analysis_schema import (
     ClickMetrics,
     FormMetrics,
@@ -7,12 +8,9 @@ from .bot_analysis_schema import (
     NavigationMetrics,
     ScrollMetrics,
 )
-from .event_behavior_schema import (
-    CategoryEvent,
-    PageEvent,
-    ProductEvent,
-    UserEvents,
-)
+from .feature_schema import InputFeatureSet
+from .product_schema import Product
+from .user_session_schema import UserSession
 
 __all__ = [
     "MovementMetrics",
@@ -22,8 +20,8 @@ __all__ = [
     "FormMetrics",
     "NavigationMetrics",
     "MouseBehaviorBatch",
-    "ProductEvent",
-    "CategoryEvent",
-    "PageEvent",
-    "UserEvents",
+    "Product",
+    "UserSession",
+    "InputFeatureSet",
+    "DetectionResult",
 ]

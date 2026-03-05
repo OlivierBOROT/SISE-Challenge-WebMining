@@ -10,7 +10,8 @@ from app import create_app
 
 def main():
     app = create_app()
-    app.run(port=8000)
+    # For now we only print status; run the server in dev to inspect
+    app.run(debug=True, port=8000)
 
 
 if __name__ == "__main__":
