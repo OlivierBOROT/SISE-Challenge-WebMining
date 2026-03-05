@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 @dataclass
-class FeatureSet:
+class InputFeatureSet:
     page: str
     batch_t: float
     features: dict[str, float]      # named features

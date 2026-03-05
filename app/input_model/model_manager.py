@@ -1,6 +1,6 @@
 """
 Training Service
-Builds, trains and persists an anomaly detection model from FeatureSet vectors,
+Builds, trains and persists an anomaly detection model from InputFeatureSet vectors,
 and exposes predict() for bot detection at inference time.
 
 Supported models (AnomalyModel enum):
@@ -27,7 +27,7 @@ from sklearn.neighbors import LocalOutlierFactor
 from sklearn.svm import OneClassSVM
 
 from app.schemas import DetectionResult
-from app.input_model.feature_builder import FEATURE_COLUMNS, FeatureSet, to_numpy
+from app.input_model.feature_builder import FEATURE_COLUMNS, InputFeatureSet, to_numpy
 from app.services.storage_service import JSONL_PATH, load_numpy, record_count
 
 logger = logging.getLogger(__name__)
@@ -223,7 +223,7 @@ class InputModelManager:
 
     def train(
         self,
-        feature_sets: list[FeatureSet] | None = None,
+        feature_sets: list[InputFeatureSet] | None = None,
         use_stored: bool = True,
         n_synthetic: int = 600,
         cfg: ModelConfig | None = None,
@@ -232,7 +232,7 @@ class InputModelManager:
         Train the anomaly detection model.
 
         Args:
-            feature_sets: Optional list of FeatureSet objects (assumed human samples)
+            feature_sets: Optional list of InputFeatureSet objects (assumed human samples)
             use_stored: If True, load records from data/features.jsonl
             n_synthetic: Number of synthetic human samples to add
             cfg: Optional ModelConfig. If None, uses self.config
@@ -357,12 +357,12 @@ class InputModelManager:
 
     def predict(
         self,
-        feature_set: FeatureSet,
+        feature_set: InputFeatureSet,
         model: BaseEstimator | None = None,
         cfg: ModelConfig | None = None,
     ) -> DetectionResult:
         """
-        Run bot detection on a single FeatureSet.
+        Run bot detection on a single InputFeatureSet.
 
         Args:
             feature_set: Output of feature_service.extract()

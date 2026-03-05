@@ -16,7 +16,7 @@ import logging
 
 import numpy as np
 
-from app.input_model.feature_builder import FeatureSet, FEATURE_COLUMNS
+from app.input_model.feature_builder import InputFeatureSet, FEATURE_COLUMNS
 from app.services.storage_service import StorageService
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ class DataConnector:
 
     def persist_poc_data(
         self,
-        feature_set: FeatureSet,
+        feature_set: InputFeatureSet,
         schema_version: str = "1.0",
         feature_version: str = "1.0",
     ) -> None:
@@ -65,7 +65,7 @@ class DataConnector:
 
     def persist_production_data(
         self,
-        feature_set: FeatureSet,
+        feature_set: InputFeatureSet,
         schema_version: str = "1.0",
         feature_version: str = "1.0",
     ) -> None:
@@ -90,7 +90,7 @@ class DataConnector:
         include_poc: bool = False,
         include_production: bool = True,
         sources: list[str] | None = None,
-    ) -> list[FeatureSet]:
+    ) -> list[InputFeatureSet]:
         """
         Load feature sets for training.
 
@@ -101,7 +101,7 @@ class DataConnector:
                      when provided). E.g. ["human", "bot_direct", "bot_linear"]
 
         Returns:
-            list[FeatureSet]: Combined feature sets based on filters
+            list[InputFeatureSet]: Combined feature sets based on filters
         """
         if sources is not None:
             results = []

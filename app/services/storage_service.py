@@ -1,6 +1,6 @@
 """
 Storage Service
-Persists FeatureSet records to disk for offline model training.
+Persists InputFeatureSet records to disk for offline model training.
 
 Provides a StorageService class with methods for:
 - Writing: append(feature_set, source='production')  →  data/features.jsonl
@@ -26,7 +26,7 @@ from pathlib import Path
 
 import numpy as np
 
-from app.input_model.feature_builder import FeatureSet, FEATURE_COLUMNS
+from app.input_model.feature_builder import InputFeatureSet, FEATURE_COLUMNS
 
 logger = logging.getLogger(__name__)
 
@@ -68,17 +68,17 @@ class StorageService:
 
     def append(
         self,
-        feature_set: FeatureSet,
+        feature_set: InputFeatureSet,
         source: str = "production",
         schema_version: str = "1.0",
         feature_version: str = "1.0",
     ) -> None:
         """
-        Append a single FeatureSet to the JSONL store with metadata.
+        Append a single InputFeatureSet to the JSONL store with metadata.
         Creates the file (and data/ dir) if they don't exist.
 
         Args:
-            feature_set: FeatureSet to persist
+            feature_set: InputFeatureSet to persist
             source: Data origin ('poc' for POC collection, 'production' for real inference)
             schema_version: Storage schema version (for future migrations)
             feature_version: Feature extraction schema version
@@ -94,21 +94,21 @@ class StorageService:
         with self.jsonl_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(row) + "\n")
 
-    def load_feature_sets(self, source: str | None = None) -> list[FeatureSet]:
+    def load_feature_sets(self, source: str | None = None) -> list[InputFeatureSet]:
         """
-        Read all stored records back as FeatureSet objects.
+        Read all stored records back as InputFeatureSet objects.
         Skips malformed lines with a warning instead of crashing.
 
         Args:
             source: Filter by source ('poc', 'production', or None for all)
 
         Returns:
-            list[FeatureSet]: Loaded feature sets, optionally filtered
+            list[InputFeatureSet]: Loaded feature sets, optionally filtered
         """
         if not self.jsonl_path.exists():
             return []
 
-        results: list[FeatureSet] = []
+        results: list[InputFeatureSet] = []
         with self.jsonl_path.open("r", encoding="utf-8") as f:
             for i, line in enumerate(f, 1):
                 line = line.strip()
@@ -120,7 +120,7 @@ class StorageService:
                     if source and row.get("source") != source:
                         continue
                     results.append(
-                        FeatureSet(
+                        InputFeatureSet(
                             page=row["page"],
                             batch_t=row["batch_t"],
                             features=row["features"],

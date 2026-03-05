@@ -9,7 +9,7 @@ import math
 
 import numpy as np
 
-from app.schemas import MouseBehaviorBatch, FeatureSet
+from app.schemas import MouseBehaviorBatch, InputFeatureSet
 
 logger = logging.getLogger(__name__)
 
@@ -85,10 +85,10 @@ class InputFeatureBuilder:
             return 0.0
         return round(float(val), 6)
 
-    def extract(self, batch: MouseBehaviorBatch) -> FeatureSet:
+    def extract(self, batch: MouseBehaviorBatch) -> InputFeatureSet:
         """
         Main entry point.
-        Receives a validated batch and returns a FeatureSet with named features + ordered vector.
+        Receives a validated batch and returns a InputFeatureSet with named features + ordered vector.
         """
         m  = batch.movement
         cl = batch.clicks
@@ -151,18 +151,18 @@ class InputFeatureBuilder:
 
         vector = [features[col] for col in FEATURE_COLUMNS]
 
-        return FeatureSet(
+        return InputFeatureSet(
             page=batch.page,
             batch_t=batch.batch_t,
             features=features,
             vector=vector,
         )
 
-    def to_numpy(self, feature_set: FeatureSet) -> np.ndarray:
+    def to_numpy(self, feature_set: InputFeatureSet) -> np.ndarray:
         """Return the feature vector as a 2D numpy array for scikit-learn."""
         return np.array(feature_set.vector, dtype=float).reshape(1, -1)
 
-    def heuristic_score(self, feature_set: FeatureSet) -> tuple[float, list[str]]:
+    def heuristic_score(self, feature_set: InputFeatureSet) -> tuple[float, list[str]]:
         """
         Rule-based score — works without a trained model.
         Returns (score 0.0–1.0, list of triggered rules).
@@ -187,6 +187,6 @@ class InputFeatureBuilder:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def to_numpy(feature_set: FeatureSet) -> np.ndarray:
-    """Convert FeatureSet vector to 2D numpy array for scikit-learn models."""
+def to_numpy(feature_set: InputFeatureSet) -> np.ndarray:
+    """Convert InputFeatureSet vector to 2D numpy array for scikit-learn models."""
     return np.array(feature_set.vector, dtype=float).reshape(1, -1)

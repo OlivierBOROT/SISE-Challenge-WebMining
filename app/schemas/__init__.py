@@ -1,4 +1,4 @@
-from .feature_schema import FeatureSet
+from .feature_schema import InputFeatureSet
 from.bot_analysis_answer_schema import DetectionResult
 from .bot_analysis_schema import (
     ClickMetrics,
@@ -23,6 +23,6 @@ __all__ = [
     "MouseBehaviorBatch",
     "Product",
     "UserSession",
-    "FeatureSet",
+    "InputFeatureSet",
     "DetectionResult"
 ]
