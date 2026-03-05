@@ -92,6 +92,7 @@ def track_inputs():
     session_id: str = data.get("session_id")
     stats: dict = data.get("stats")
 
+    print('mouse_behaviour', stats, flush=True)
     behaviour_batch = MouseBehaviorBatch(**stats)
     result = app.user_service.predict_bot(behaviour_batch, session_id)
 
