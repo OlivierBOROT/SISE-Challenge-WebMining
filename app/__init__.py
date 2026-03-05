@@ -11,6 +11,7 @@ from flask import Flask
 
 from app.services import (
     BehaviorService,
+    DataConnector,
     ProductData,
     UserService,
 )

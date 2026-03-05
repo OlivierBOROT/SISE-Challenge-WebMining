@@ -7,8 +7,6 @@ from typing import Any, Dict, List, Optional
 
 from app.behavior_model import FeatureBuilder, ModelManager
 
-logger = logging.getLogger(__name__)
-
 DEFAULT_MODEL_PATH = os.path.join("data", "models", "behavior_analysis_model.joblib")
 
 
