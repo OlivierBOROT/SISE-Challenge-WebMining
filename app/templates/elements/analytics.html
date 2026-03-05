@@ -1,5 +1,43 @@
-<div class="prediction" id="bot"></div>
-<div class="prediction" id="classe"></div>
+<!-- Bot classification -->
+<div class="widget bot-result" id="bot-widget">
+   <div class="widget-header">
+      <span class="widget-title">Bot Detection</span>
+      <span class="bot-status" id="bot-status">&mdash;</span>
+   </div>
+   <div class="bot-score-row">
+      <span class="bot-score-val" id="bot-score">&mdash;</span>
+      <span class="bot-score-lbl">bot score</span>
+   </div>
+   <div class="bot-bar-track">
+      <div class="bot-bar-fill" id="bot-bar"></div>
+      <div class="bot-bar-threshold"></div>
+   </div>
+   <div class="bot-bar-labels">
+      <span>Human</span>
+      <span>Bot</span>
+   </div>
+</div>
+
+<!-- Cluster Classification -->
+<div class="widget" id="cluster-widget" style="margin-top:10px;">
+   <div class="widget-header">
+      <span class="widget-title">Profil utilisateur</span>
+      <span class="live-badge" id="cluster-badge" style="visibility:hidden"><span class="live-dot"></span>Classifié</span>
+   </div>
+   <div id="cluster-result" style="display:none">
+      <div id="cluster-pill-wrap"></div>
+      <div class="cluster-name" id="cluster-name"></div>
+      <div class="cluster-desc" id="cluster-desc"></div>
+   </div>
+   <div class="descriptions">
+      <div class="cluster-divider"></div>
+      <div class="cluster-all" id="cluster-all"></div>
+   </div>
+   <div style="color:#bbb;font-size:10px;text-align:center;padding:6px 0" id="cluster-pending">En attente de résultat</div>
+   <p id="cluster-more-button">Voir plus</p>
+   </div>
+
+</div>
 
 <div class="graph">
 
