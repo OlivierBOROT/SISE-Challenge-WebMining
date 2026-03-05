@@ -117,6 +117,7 @@ def track_events():
     session_id: str = data.get("session_id")
     events: dict = data.get("events")
 
+    print(events, flush=True)
     user_events = UserEvents(**events)
     result = app.user_service.predict_behaviour(user_events, session_id)
 

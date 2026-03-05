@@ -79,7 +79,6 @@ class UserEvents(BaseModel):
             difference = (most_recent - ts).total_seconds()
 
             if difference <= duration:
-                print('success')
                 window_events.append(e)
             else:
                 return window_events
