@@ -25,6 +25,7 @@ def home():
     """
     resp = make_response(render_template("index.html"))
     session = app.user_service.create_session()
+    resp.set_cookie('session_id', session.id, httponly=False)
     resp.headers["X-Session-ID"] = session.id
 
     #TODO: we need to create a session ID on page load. Each session is stored in a UserSession service, 

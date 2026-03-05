@@ -4,7 +4,7 @@ from app.schemas import UserSession, MouseBehaviorBatch, DetectionResult
 
 class UserService:
 
-    sessions: dict[str, UserSession]
+    sessions: dict[str, UserSession] = {}
     
     def __init__(self) -> None:
         self.input_feature_builder = InputFeatureBuilder()

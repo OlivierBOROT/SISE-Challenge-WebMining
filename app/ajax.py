@@ -86,12 +86,11 @@ def track_inputs():
             "bot_score": int
         }
     """
-    session_id: str = request.form.get('session_id')  # type: ignore
-    stats: dict = request.form.get('stats')  # type: ignore
+    data = request.get_json(force=True)
+    session_id: str = data.get('session_id')
+    stats: dict = data.get('stats')
 
-    source = stats.pop("_source", "human")  # injected by bots; defaults to human
     behaviour_batch = MouseBehaviorBatch(**stats)
-
     result = app.user_service.predict_bot(behaviour_batch, session_id)
 
     return jsonify({

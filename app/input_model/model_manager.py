@@ -28,7 +28,7 @@ from sklearn.svm import OneClassSVM
 
 from app.schemas import DetectionResult
 from app.input_model.feature_builder import FEATURE_COLUMNS, InputFeatureSet, to_numpy
-from app.services.storage_service import JSONL_PATH, load_numpy, record_count
+from app.utility.storage import load_numpy, record_count
 
 logger = logging.getLogger(__name__)
 
@@ -250,10 +250,10 @@ class InputModelManager:
             parts.append(real)
 
         if use_stored:
-            n = record_count(JSONL_PATH)
+            n = record_count()
             if n > 0:
-                parts.append(load_numpy(JSONL_PATH))
-                logger.debug(f"Loaded {n} stored records from {JSONL_PATH}")
+                parts.append(load_numpy())
+                logger.debug(f"Loaded {n} stored records from data/features.jsonl")
 
         if n_synthetic > 0:
             parts.append(self._generate_human_samples(n_synthetic))
