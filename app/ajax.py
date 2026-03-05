@@ -122,6 +122,15 @@ def track_events():
     user_events = UserEvents(**events)
     result = app.user_service.predict_behaviour(user_events, session_id, source)
 
+    if not result:
+        return jsonify({
+            "warning": "Not enough data to run a predict. 10 seconds required"
+        })
+
     return jsonify({
-        "label": result
+        "label": result.label,
+        "projection": {
+            "PC1": result.pc1,
+            "PC2": result.pc2
+        }
     })

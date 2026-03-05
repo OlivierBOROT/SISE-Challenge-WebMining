@@ -8,6 +8,8 @@ from joblib import dump, load
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
+from app.schemas import BehaviourFeatureSet, ClusteringResult
+
 
 class BehaviourModelManager:
     """Wraps scaler/PCA/HDBSCAN and provides save/load and predict helpers."""
@@ -24,7 +26,7 @@ class BehaviourModelManager:
         self.pca_dim = pca_dim
         self.pca_results = None
         self.fitted = False
-        self.feature_order = None
+        self.feature_order:list|None = None
 
     def fit(self, feature_dicts: List[Dict[str, Any]]):
         if not feature_dicts:
@@ -40,15 +42,23 @@ class BehaviourModelManager:
         self.model.fit(X_scaled)
         self.fitted = True
 
-    def predict(self, features: Dict[str, Any]) -> int:
-        if not self.fitted and self.feature_order is None:
+    def predict(self, behaviour: BehaviourFeatureSet) -> ClusteringResult:
+        if not self.fitted or self.feature_order is None:
             raise ValueError("Model not fitted or loaded")
-        X = np.array([[float(features[k]) for k in self.feature_order]], dtype=float)
+        
+        X = np.array([[float(behaviour.features[k]) for k in self.feature_order]], dtype=float)
         X_scaled = self.scaler.transform(X)
+
         if self.use_pca and self.pca is not None:
             X_scaled = self.pca.transform(X_scaled)
-        labels, strengths = approximate_predict(self.model, X_scaled)
-        return int(labels[0])
+
+        labels, _ = approximate_predict(self.model, X_scaled)
+
+        return ClusteringResult(
+            label=int(labels[0]),
+            pc1=X_scaled[0],
+            pc2=X_scaled[1]
+        )
 
     def save(self, path: str):
         dirpath = os.path.dirname(path)

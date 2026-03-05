@@ -1,6 +1,6 @@
 from app.input_model import InputFeatureBuilder, InputModelManager
 from app.behavior_model import BehaviourFeatureBuilder, BehaviourModelManager
-from app.schemas import UserSession, MouseBehaviorBatch, UserEvents, InputFeatureSet, BehaviourFeatureSet, DetectionResult
+from app.schemas import UserSession, MouseBehaviorBatch, UserEvents, InputFeatureSet, BehaviourFeatureSet, DetectionResult, ClusteringResult
 from app.utility.storage import StorageService
 
 class UserService:
@@ -82,7 +82,7 @@ class UserService:
         return result
 
 
-    def predict_behaviour(self, events: UserEvents, session_id: str, source: str = "human") -> int|None:
+    def predict_behaviour(self, events: UserEvents, session_id: str, source: str = "human") -> ClusteringResult|None:
         """
         Validate features with FeatureSe, run prediction and return results
 
@@ -102,8 +102,7 @@ class UserService:
 
         features = self.behaviour_feature_builder.build(events)
         self.behaviour_storage.append(features, source=source)
-        
-        return 0
+    
         result = self.behaviour_model_manager.predict(features)
         session.behaviour_features = features
         session.behaviour_prediction = result

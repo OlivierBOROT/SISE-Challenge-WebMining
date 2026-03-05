@@ -1,4 +1,4 @@
-from .bot_analysis_answer_schema import DetectionResult
+from .bot_analysis_answer_schema import DetectionResult, ClusteringResult
 from .bot_analysis_schema import (
     ClickMetrics,
     FormMetrics,
