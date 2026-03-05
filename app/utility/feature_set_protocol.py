@@ -23,6 +23,5 @@ class FeatureSet(Protocol):
         - vector: Ordered vector for model input
     """
     
-    session_id: str
     features: Dict[str, float]
     vector: List[float]

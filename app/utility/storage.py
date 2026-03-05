@@ -36,9 +36,9 @@ class StorageService(Generic[T]):
 
     def __init__(
         self,
+        jsonl_path: Path | str,
         feature_class: Type[T],
         data_dir: Path | str | None = None,
-        jsonl_path: Path | str | None = None,
         parquet_path: Path | str | None = None,
     ):
         """
@@ -57,10 +57,7 @@ class StorageService(Generic[T]):
         else:
             self.data_dir = Path(data_dir)
 
-        if jsonl_path is None:
-            self.jsonl_path = self.data_dir / "features.jsonl"
-        else:
-            self.jsonl_path = Path(jsonl_path)
+        self.jsonl_path = self.data_dir / Path(jsonl_path)
 
         if parquet_path is None:
             self.parquet_path = self.data_dir / "features.parquet"

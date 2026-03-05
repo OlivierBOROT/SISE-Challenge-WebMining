@@ -1,18 +1,28 @@
 from app.input_model import InputFeatureBuilder, InputModelManager
 from app.behavior_model import BehaviourFeatureBuilder, BehaviourModelManager
-from app.schemas import UserSession, MouseBehaviorBatch, UserEvents, DetectionResult
-import app.utility.storage as storage
+from app.schemas import UserSession, MouseBehaviorBatch, UserEvents, InputFeatureSet, BehaviourFeatureSet, DetectionResult
+from app.utility.storage import StorageService
 
 class UserService:
 
     sessions: dict[str, UserSession] = {}
+    behaviour_storage: StorageService
+    input_storage: StorageService
     
     def __init__(self) -> None:
         self.input_feature_builder = InputFeatureBuilder()
         self.input_model_manager = InputModelManager()
+        self.input_storage = StorageService(
+            jsonl_path='features/input_features.jsonl',
+            feature_class=InputFeatureSet
+        )
         
         self.behaviour_feature_builder = BehaviourFeatureBuilder()
         self.behaviour_model_manager = BehaviourModelManager()
+        self.behaviour_storage = StorageService(
+            jsonl_path='features/behaviour_features.jsonl',
+            feature_class=BehaviourFeatureSet
+        )
 
     def create_session(self, id: str|None = None) -> UserSession:
         """
@@ -67,12 +77,12 @@ class UserService:
         session.input_features = features
         session.bot_prediction = result
 
-        storage.append(features, source=source)
+        self.input_storage.append(features, source=source)
 
         return result
 
 
-    def predict_behaviour(self, events: UserEvents, session_id: str) -> int|None:
+    def predict_behaviour(self, events: UserEvents, session_id: str, source: str = "human") -> int|None:
         """
         Validate features with FeatureSe, run prediction and return results
 
@@ -91,7 +101,9 @@ class UserService:
             return None
 
         features = self.behaviour_feature_builder.build(events)
+        self.behaviour_storage.append(features, source=source)
         
+        return 0
         result = self.behaviour_model_manager.predict(features)
         session.behaviour_features = features
         session.behaviour_prediction = result

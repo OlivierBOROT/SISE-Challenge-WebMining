@@ -51,9 +51,8 @@ function trackInputs() {
                 session_id: getCookie('session_id')
             })
         })
-        const content = await response.json();
-        // TODO: display result: {is_bot: bool, bot_score: float}
-    }, 1000);
+        const result = await response.json();
+    }, 10000);
 }
 
 
@@ -66,7 +65,10 @@ function trackEvents() {
             return;
         }
 
-        console.log('POST ajax/track_events', payload);
+        // Attach optional source label injected externally (e.g. by Selenium bots)
+        if (window.__TRACKER_SOURCE__) {
+            payload._source = window.__TRACKER_SOURCE__;
+        }
 
         const response = await fetch('ajax/track_events', {
             method: 'POST',
@@ -79,8 +81,6 @@ function trackEvents() {
             }),
         });
         const result = await response.json();
-        // Response handling (kept minimal)
-        console.log('RESPONSE ajax/track_events', { ok: response.ok, status: response.status });
     }, 1000);
 }
 
