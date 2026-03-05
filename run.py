@@ -39,8 +39,13 @@ def main():
         print("No data file provided")
 
     app = create_app()
-    # For now we only print status; run the server in dev to inspect
-    app.run(debug=True, port=8000)
+    # Print mode in runtime
+    print(f"App mode: {'dev' if debug else 'prod'}")
+    if args.data_file:
+        print(f"Using data file: {args.data_file}")
+
+    # Run the server
+    app.run(debug=debug, port=8000)
 
 
 if __name__ == "__main__":

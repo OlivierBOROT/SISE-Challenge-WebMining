@@ -1,9 +1,11 @@
 import { InputTracker } from './modules/inputTracker.js';
+import { EventTracker } from './modules/eventTracker.js';
 import { drawTrackPlot } from './modules/mouseTrackPlot.js';
 import { drawSpeedPlot } from './modules/mouseSpeedPlot.js';
 import { initUserResult, setClusterResult } from './modules/userResult.js';
 
-const inputTracker = new InputTracker()
+const inputTracker = new InputTracker();
+const eventTracker = new EventTracker({ userId: inputTracker.sessionId });
 
 
 
@@ -40,10 +42,35 @@ function trackInputs() {
 
 
 
+function trackEvents() {
+    eventTracker.start();
+    setInterval(async () => {
+        const payload = eventTracker.flush();
+
+        if (!payload.events.length) {
+            return;
+        }
+
+        console.log("[EventTracker]", payload);
+
+        const response = await fetch('ajax/track_events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const result = await response.json();
+        console.log("[EventTracker] features:", result.features);
+    }, 15000);
+}
+
+
 // Render analytics plots
 drawTrackPlot();
 drawSpeedPlot();
 initUserResult();
 
-// Track user inputs
+// Track user inputs (mouse, clicks, scroll, form)
 trackInputs();
+
+// Track user events (product, category, page interactions)
+trackEvents();

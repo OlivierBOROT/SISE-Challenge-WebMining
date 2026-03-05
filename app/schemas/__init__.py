@@ -7,6 +7,12 @@ from .bot_analysis_schema import (
     NavigationMetrics,
     ScrollMetrics,
 )
+from .event_behavior_schema import (
+    CategoryEvent,
+    PageEvent,
+    ProductEvent,
+    UserEvents,
+)
 
 __all__ = [
     "MovementMetrics",
@@ -16,4 +22,8 @@ __all__ = [
     "FormMetrics",
     "NavigationMetrics",
     "MouseBehaviorBatch",
+    "ProductEvent",
+    "CategoryEvent",
+    "PageEvent",
+    "UserEvents",
 ]

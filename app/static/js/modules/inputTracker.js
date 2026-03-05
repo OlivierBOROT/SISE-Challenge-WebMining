@@ -429,7 +429,9 @@ export class InputTracker {
         /* ═════ RÉSULTAT — conforme à MouseBehaviorBatch ═════ */
         return {
             session_id:                      this.sessionId,
-            page:                            window.location.pathname,
+            // Use pagination page number if available (set by layout.js),
+            // fallback to 1 when not found.
+            page:                            (window.__currentProductPage || 1),
             batch_t:                         Date.now() - this.sessionStart,
             movement,
             clicks,

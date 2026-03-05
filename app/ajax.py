@@ -5,12 +5,14 @@ Only design here function designed to be called from
 front end. No complex logic.
 """
 
+import time
 from typing import cast
 
 from flask import Blueprint, current_app, jsonify, render_template, request
 
 from app import AppContext
-from app.schemas import MouseBehaviorBatch
+from app.behavior_model import FeatureBuilder
+from app.schemas import MouseBehaviorBatch, UserEvents
 
 # Cast app_context typing
 app = cast(AppContext, current_app)
@@ -85,6 +87,40 @@ def track_inputs():
     behaviour_batch = MouseBehaviorBatch(**stats)
 
     feature_set = app.feature_service.extract(behaviour_batch)
+    # Always store incoming input-derived features to main storage
     app.storage_service.append(feature_set)
 
     return jsonify({"success": True})
+
+
+@ajax.route("/track_events", methods=["POST"])
+def track_events():
+    """
+    Receive user interaction events (product, category, page) from
+    the EventTracker JS module and build features via FeatureBuilder.
+
+    Arguments:
+        json: UserEvents payload { user_id, events[] }
+
+    Returns:
+        json: { features: dict, user_id: str }
+    """
+    data = request.json
+    user_events = UserEvents(**data)
+
+    # Convert Pydantic models to plain dicts for FeatureBuilder
+    events_dicts = [e.model_dump() for e in user_events.events]
+
+    result = app.behavior_service.predict_from_raw(
+        events_dicts, session_id=user_events.user_id
+    )
+    fs = result.get("feature_set")
+    if fs is not None:
+        app.storage_service.append(fs)
+    return jsonify(
+        {
+            "user_id": user_events.user_id,
+            "features": result.get("features"),
+            "label": result.get("label"),
+        }
+    )
