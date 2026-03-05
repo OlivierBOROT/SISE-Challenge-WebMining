@@ -110,7 +110,6 @@ export function drawTrackPlot() {
 
   // ── Event listeners ──
   document.addEventListener('mousemove', function (e) {
-    console.log('mouved');
     const now = performance.now();
     const { x, y } = toCanvas(e.clientX, e.clientY);
     let speed = 0;
@@ -174,6 +173,7 @@ export function drawTrackPlot() {
 
   // ── Reset ──
   document.addEventListener('inputTrackerReset', () => {
+    return
     trail.length = 0; totalDist = 0; lastSpeed = 0; totalClicks = 0;
       grid.fill(0);
       hmCtx.clearRect(0, 0, cssW, CANVAS_H_CSS);

@@ -18,8 +18,8 @@ app = cast(AppContext, current_app)
 ajax = Blueprint("ajax", __name__)
 
 
-# ------------- Render templates
 
+# ------------- Render templates
 
 @ajax.route("/render_categories")
 def render_categories():
@@ -46,9 +46,12 @@ def render_products():
         html: Product result section
     """
     category = request.args.get("category", "all")
+    query = request.args.get("query")
     page = request.args.get("page", 0, type=int)
 
-    if category == "all":
+    if query:
+        products = app.product_data.search(query)
+    elif category == "all":
         products = app.product_data.get_all()
     else:
         products = app.product_data.get_by_category(category)
@@ -58,6 +61,7 @@ def render_products():
     return render_template(
         "elements/products.html",
         category=category,
+        query=query,
         products=products,
         page=page,
         max_page=max_page,
@@ -65,7 +69,6 @@ def render_products():
 
 
 # ------------- Tracking
-
 
 @ajax.route("/track_inputs", methods=["POST"])
 def track_inputs():

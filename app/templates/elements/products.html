@@ -1,4 +1,4 @@
-<h1>Résultats pour "{{ category }}"</h1>
+<h1>Résultats pour "{{ query or category }}"</h1>
 <div class="product-grid">
 {% for product in products %}
     <article class="product-card" data-id="{{ product.id }}">
