@@ -336,7 +336,7 @@ export class InputTracker {
         if (n < 3) {
             return {
                 session_id: this.sessionId,
-                page:       window.location.pathname,
+                page:       String(window.__currentProductPage || 1),
                 batch_t:    Date.now() - this.sessionStart,
                 movement: {
                     total_move_events: n,       move_event_rate_hz: 0,

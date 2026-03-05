@@ -92,6 +92,7 @@ class UserService:
 
         features = self.behaviour_feature_builder.build(events)
         
+        return 0
         result = self.behaviour_model_manager.predict(features)
         session.behaviour_features = features
         session.behaviour_prediction = result
