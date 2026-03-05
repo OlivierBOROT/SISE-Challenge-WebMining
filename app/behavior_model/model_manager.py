@@ -1,78 +1,49 @@
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-import hdbscan
 import numpy as np
-from hdbscan import approximate_predict
-from joblib import dump, load
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
+from joblib import load
+
+from app.schemas import BehaviourFeatureSet
 
 
 class BehaviourModelManager:
-    """Wraps scaler/PCA/HDBSCAN and provides save/load and predict helpers."""
+    """
+    Loads scaler, PCA, and KMeans models from a directory (default 'data/models').
+    Allows overriding each model path via kwargs. Provides a predict method
+    that returns the cluster label and the 2D PCA projection.
+    """
 
-    def __init__(
-        self, use_pca: bool = True, pca_dim: int = 5, min_cluster_size: int = 5
-    ):
-        self.scaler = StandardScaler()
-        self.use_pca = use_pca
-        self.pca = PCA(n_components=pca_dim) if use_pca else None
-        self.model = hdbscan.HDBSCAN(
-            min_cluster_size=min_cluster_size, prediction_data=True
+    def __init__(self, model_path: str = "data/models", **kwargs):
+        scaler_path = kwargs.get(
+            "scaler_path", os.path.join(model_path, "scaler_final.joblib")
         )
-        self.pca_dim = pca_dim
-        self.pca_results = None
-        self.fitted = False
-        self.feature_order = None
-
-    def fit(self, feature_dicts: List[Dict[str, Any]]):
-        if not feature_dicts:
-            raise ValueError("feature_dicts must be non-empty")
-        self.feature_order = list(feature_dicts[0].keys())
-        X = np.array(
-            [[f[k] for k in self.feature_order] for f in feature_dicts], dtype=float
+        pca_path = kwargs.get("pca_path", os.path.join(model_path, "pca_final.joblib"))
+        kmeans_path = kwargs.get(
+            "kmeans_path", os.path.join(model_path, "kmeans_final.joblib")
         )
-        X_scaled = self.scaler.fit_transform(X)
-        if self.use_pca and self.pca is not None:
-            X_scaled = self.pca.fit_transform(X_scaled)
-            self.pca_results = self.pca.explained_variance_ratio_
-        self.model.fit(X_scaled)
-        self.fitted = True
 
-    def predict(self, features: Dict[str, Any]) -> int:
-        if not self.fitted and self.feature_order is None:
-            raise ValueError("Model not fitted or loaded")
-        X = np.array([[float(features[k]) for k in self.feature_order]], dtype=float)
+        if not os.path.exists(scaler_path):
+            raise FileNotFoundError(f"Scaler model not found at {scaler_path}")
+        if not os.path.exists(pca_path):
+            raise FileNotFoundError(f"PCA model not found at {pca_path}")
+        if not os.path.exists(kmeans_path):
+            raise FileNotFoundError(f"KMeans model not found at {kmeans_path}")
+
+        self.scaler = load(scaler_path)
+        self.pca = load(pca_path)
+        self.kmeans = load(kmeans_path)
+
+    def predict(self, features: BehaviourFeatureSet) -> Dict[str, Any]:
+        X = np.array([features.vector], dtype=float)
         X_scaled = self.scaler.transform(X)
-        if self.use_pca and self.pca is not None:
-            X_scaled = self.pca.transform(X_scaled)
-        labels, strengths = approximate_predict(self.model, X_scaled)
-        return int(labels[0])
+        X_pca = self.pca.transform(X_scaled)
+        label = int(self.kmeans.predict(X_pca)[0])
+        comp1 = float(X_pca[0, 0])
+        comp2 = float(X_pca[0, 1])
+        result = {"label": label, "position": {"comp1": comp1, "comp2": comp2}}
 
-    def save(self, path: str):
-        dirpath = os.path.dirname(path)
-        if dirpath and not os.path.exists(dirpath):
-            os.makedirs(dirpath, exist_ok=True)
-        payload = {
-            "scaler": self.scaler,
-            "pca": self.pca,
-            "model": self.model,
-            "feature_order": self.feature_order,
-            "use_pca": self.use_pca,
-        }
-        dump(payload, path)
-
-    @classmethod
-    def load(cls, path: str) -> "ModelManager":
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"Model file not found: {path}")
-        payload = load(path)
-        mm = cls(use_pca=payload.get("use_pca", True), pca_dim=5)
-        mm.scaler = payload.get("scaler")
-        mm.pca = payload.get("pca")
-        mm.model = payload.get("model")
-        mm.feature_order = payload.get("feature_order")
-        mm.use_pca = payload.get("use_pca", True)
-        mm.fitted = True
-        return mm
+        print("\n" * 2, flush=True)
+        print("Predicted cluster label:", label, flush=True)
+        print("PCA position:", result["position"], flush=True)
+        return result
