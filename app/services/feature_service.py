@@ -189,3 +189,12 @@ class FeatureService:
 
         score = weighted_sum / total_weight
         return round(min(1.0, score), 4), triggered
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Module-level utility functions (for use by other services)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def to_numpy(feature_set: FeatureSet) -> np.ndarray:
+    """Convert FeatureSet vector to 2D numpy array for scikit-learn models."""
+    return np.array(feature_set.vector, dtype=float).reshape(1, -1)

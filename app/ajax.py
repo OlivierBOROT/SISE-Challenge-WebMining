@@ -82,10 +82,11 @@ def track_inputs():
         }
     """
     app = cast(AppContext, current_app)
-    stats = request.json
+    stats = dict(request.json)  # type: ignore
+    source = stats.pop("_source", "human")  # injected by bots; defaults to human
     behaviour_batch = MouseBehaviorBatch(**stats)
 
     feature_set = app.feature_service.extract(behaviour_batch)
-    app.storage_service.append(feature_set)
-    
+    app.storage_service.append(feature_set, source=source)
+
     return jsonify({"success": True})

@@ -20,7 +20,6 @@ from __future__ import annotations
 import os
 import json
 import logging
-import os
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
@@ -234,6 +233,28 @@ class StorageService:
         with self.jsonl_path.open("r", encoding="utf-8") as f:
             return sum(1 for line in f if line.strip())
 
+    def count_by_source(self) -> dict[str, int]:
+        """
+        Count stored records grouped by source label.
+        Scans JSONL without loading full records into memory.
+
+        Returns:
+            dict: e.g. {'human': 12, 'bot_direct': 8, 'bot_linear': 6, ...}
+        """
+        counts: dict[str, int] = {}
+        if not self.jsonl_path.exists():
+            return counts
+        with self.jsonl_path.open("r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        record = json.loads(line)
+                        src = record.get("source", "unknown")
+                        counts[src] = counts.get(src, 0) + 1
+                    except json.JSONDecodeError:
+                        pass
+        return counts
+
     def clear(self) -> None:
         """
         Delete the JSONL store.
@@ -245,5 +266,64 @@ class StorageService:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Module-level singleton for backward compatibility
+# Module-level utility functions (for use by other services)
 # ─────────────────────────────────────────────────────────────────────────────
+
+# Default JSONL path for module-level functions
+JSONL_PATH = Path(os.environ.get("DATA_PATH", "data")) / "features.jsonl"
+
+
+def load_numpy(path: Path | str | None = None) -> np.ndarray:
+    """
+    Load feature vectors from JSONL storage as a 2D numpy array.
+    
+    Args:
+        path: Path to JSONL file. Defaults to JSONL_PATH (data/features.jsonl)
+    
+    Returns:
+        np.ndarray: Shape (N, N_FEATURES)
+    """
+    if path is None:
+        path = JSONL_PATH
+    else:
+        path = Path(path)
+    
+    if not path.exists():
+        return np.empty((0, len(FEATURE_COLUMNS)), dtype=float)
+    
+    vectors = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                try:
+                    record = json.loads(line)
+                    vectors.append(record.get("vector", []))
+                except (json.JSONDecodeError, KeyError):
+                    logger.warning(f"Skipped malformed line in {path}")
+    
+    if not vectors:
+        return np.empty((0, len(FEATURE_COLUMNS)), dtype=float)
+    
+    return np.array(vectors, dtype=float)
+
+
+def record_count(path: Path | str | None = None) -> int:
+    """
+    Return the number of stored records without loading them into memory.
+    
+    Args:
+        path: Path to JSONL file. Defaults to JSONL_PATH (data/features.jsonl)
+    
+    Returns:
+        int: Number of records
+    """
+    if path is None:
+        path = JSONL_PATH
+    else:
+        path = Path(path)
+    
+    if not path.exists():
+        return 0
+    
+    with path.open("r", encoding="utf-8") as f:
+        return sum(1 for line in f if line.strip())

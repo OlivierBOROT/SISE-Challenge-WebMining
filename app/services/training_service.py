@@ -157,13 +157,15 @@ class TrainingService:
     Encapsulates model state and caching to support lazy-loading and retraining.
     """
 
-    def __init__(self, config: ModelConfig = DEFAULT_CONFIG):
+    def __init__(self, storage=None, config: ModelConfig = DEFAULT_CONFIG):
         """
         Initialize training service.
 
         Args:
+            storage: Optional StorageService instance for accessing training data
             config: ModelConfig specifying model type and hyper-parameters
         """
+        self.storage = storage
         self.config = config
         self._model: BaseEstimator | None = None
         logger.debug(f"Initializing TrainingService with config: {config.model_type.value}")

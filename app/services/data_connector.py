@@ -88,48 +88,67 @@ class DataConnector:
         logger.debug(f"Persisted production data for session {feature_set.session_id}")
 
     def get_training_data(
-        self, include_poc: bool = False, include_production: bool = True
+        self,
+        include_poc: bool = False,
+        include_production: bool = True,
+        sources: list[str] | None = None,
     ) -> list[FeatureSet]:
         """
         Load feature sets for training.
 
         Args:
-            include_poc: Include POC data in training set
-            include_production: Include production data in training set
+            include_poc: Include POC data (source="poc")
+            include_production: Include production data (source="production")
+            sources: Explicit list of source labels to load (overrides include_* flags
+                     when provided). E.g. ["human", "bot_direct", "bot_linear"]
 
         Returns:
             list[FeatureSet]: Combined feature sets based on filters
         """
-        results = []
+        if sources is not None:
+            results = []
+            for src in sources:
+                results.extend(self.storage.load_feature_sets(source=src))
+            return results
 
+        results = []
         if include_production:
             results.extend(self.storage.load_feature_sets(source=SOURCE_PRODUCTION))
-
         if include_poc:
             results.extend(self.storage.load_feature_sets(source=SOURCE_POC))
-
         return results
 
     def get_training_data_numpy(
-        self, include_poc: bool = False, include_production: bool = True
+        self,
+        include_poc: bool = False,
+        include_production: bool = True,
+        sources: list[str] | None = None,
     ) -> np.ndarray:
         """
         Load feature vectors as numpy array for training.
 
         Args:
-            include_poc: Include POC data in training set
-            include_production: Include production data in training set
+            include_poc: Include POC data (source="poc")
+            include_production: Include production data (source="production")
+            sources: Explicit list of source labels to load (overrides include_* flags
+                     when provided). E.g. ["human", "bot_direct", "bot_scan"]
 
         Returns:
             np.ndarray: Shape (N, N_FEATURES)
         """
-        parts = []
+        if sources is not None:
+            parts = []
+            for src in sources:
+                data = self.storage.load_numpy(source=src)
+                if data.shape[0] > 0:
+                    parts.append(data)
+            return np.vstack(parts) if parts else np.empty((0, len(FEATURE_COLUMNS)), dtype=float)
 
+        parts = []
         if include_production:
             prod_data = self.storage.load_numpy(source=SOURCE_PRODUCTION)
             if prod_data.shape[0] > 0:
                 parts.append(prod_data)
-
         if include_poc:
             poc_data = self.storage.load_numpy(source=SOURCE_POC)
             if poc_data.shape[0] > 0:
@@ -142,17 +161,11 @@ class DataConnector:
 
     def get_data_statistics(self) -> dict[str, int]:
         """
-        Get counts of stored data by source.
+        Get counts of stored records grouped by source label.
 
         Returns:
-            dict: {'production': int, 'poc': int, 'total': int}
+            dict: e.g. {'human': 12, 'bot_direct': 8, 'total': 20, ...}
         """
-        prod_count = len(self.storage.load_feature_sets(source=SOURCE_PRODUCTION))
-        poc_count = len(self.storage.load_feature_sets(source=SOURCE_POC))
-
-        return {
-            "production": prod_count,
-            "poc": poc_count,
-            "total": prod_count + poc_count,
-        }
+        by_source = self.storage.count_by_source()
+        return {**by_source, "total": sum(by_source.values())}
 
