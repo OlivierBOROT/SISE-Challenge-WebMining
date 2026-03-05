@@ -37,7 +37,6 @@ class BehaviourModelManager:
     def predict(self, features: BehaviourFeatureSet) -> Dict[str, Any]:
         X = np.array([features.vector], dtype=float)
         X_scaled = self.scaler.transform(X)
-        X_scaled = self.scaler.transform(X)
         X_pca = self.pca.transform(X_scaled)
         label = int(self.kmeans.predict(X_pca)[0])
         comp1 = float(X_pca[0, 0])
