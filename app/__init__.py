@@ -10,8 +10,6 @@ from dotenv import load_dotenv
 from flask import Flask
 
 from app.services import (
-    BehaviorService,
-    DataConnector,
     ProductData,
     UserService,
 )
@@ -22,8 +20,6 @@ class AppContext(Flask):
 
     product_data: ProductData
     user_service: UserService
-    data_connector: DataConnector
-    behavior_service: BehaviorService
 
 
 def create_app() -> Flask:

@@ -9,7 +9,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
 
-class ModelManager:
+class BehaviourModelManager:
     """Wraps scaler/PCA/HDBSCAN and provides save/load and predict helpers."""
 
     def __init__(

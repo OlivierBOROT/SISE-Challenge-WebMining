@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Literal, Union
 
 from pydantic import BaseModel, Field, confloat, conint
@@ -59,5 +60,29 @@ class ScrollEvent(BaseEvent):
 # Wrapper pour les événements utilisateur
 # ----------------------------
 class UserEvents(BaseModel):
-    user_id: str
     events: List[Union[ProductEvent, CategoryEvent, PageEvent, ScrollEvent]]
+
+    def window(self, new_events: list, duration=10) -> list|None:
+        """
+        Crop a window of event by timestamp
+
+        Returns:
+            List[Union[ProductEvent, CategoryEvent, PageEvent, ScrollEvent]]: Window events
+        """
+        self.events += new_events
+        sorted_events = sorted(self.events, key=lambda e: e.timestamp, reverse=True)
+
+        most_recent = datetime.fromtimestamp(sorted_events[0].timestamp)
+        window_events = []
+        for e in sorted_events:
+            ts = datetime.fromtimestamp(e.timestamp)
+            difference = (ts - most_recent).total_seconds()
+
+            if difference <= 10:
+                return window_events
+            
+            window_events.append(e)
+
+        return None
+            
+

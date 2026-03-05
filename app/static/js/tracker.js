@@ -5,7 +5,7 @@ import { drawSpeedPlot } from './modules/mouseSpeedPlot.js';
 import { initUserResult, setClusterResult } from './modules/userResult.js';
 
 const inputTracker = new InputTracker();
-const eventTracker = new EventTracker({ userId: inputTracker.sessionId });
+const eventTracker = new EventTracker();
 
 
 
@@ -31,13 +31,11 @@ function trackInputs() {
             cancelable: false
         }))
 
-        if (!stats) {
-            return
+        if (stats === null || stats === undefined) {
+            return;
         }
 
-        console.log('POST ajax/track_inputs', stats);
         // Attach optional source label injected externally (e.g. by Selenium bots)
-        const payload = { ...stats, _source: window.__TRACKER_SOURCE__ || 'human' };
         // Send stats to python
         const response = await fetch('ajax/track_inputs', {
             method: 'POST',
@@ -45,7 +43,7 @@ function trackInputs() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                stats: payload,
+                stats: stats,
                 session_id: getCookie('session_id')
             })
         })
@@ -68,8 +66,13 @@ function trackEvents() {
 
         const response = await fetch('ajax/track_events', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
+            headers: { 
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({
+                events: payload,
+                session_id: getCookie('session_id')
+            }),
         });
         const result = await response.json();
         // Response handling (kept minimal)
