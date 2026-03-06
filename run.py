@@ -5,7 +5,9 @@ and runs it on port 8000. Adjust `create_app()` or use a WSGI server
 for production deployments.
 """
 
+import os
 import warnings
+
 # sklearn ≥ 1.3 warns when its internal joblib.delayed is used without
 # sklearn's own Parallel wrapper — this is a sklearn internals issue, not ours.
 warnings.filterwarnings(

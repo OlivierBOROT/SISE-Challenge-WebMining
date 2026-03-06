@@ -48,7 +48,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Graceful shutdown on Ctrl+C
@@ -82,8 +84,8 @@ signal.signal(signal.SIGINT, _sigint_handler)
 # Configuration
 # ─────────────────────────────────────────────────────────────────────────────
 
-BASE_URL = "http://localhost:8000"
-BATCH_INTERVAL_SEC = 10      # must match setInterval() in tracker.js
+BASE_URL = "http://localhost:7860"
+BATCH_INTERVAL_SEC = 10  # must match setInterval() in tracker.js
 DEFAULT_BATCHES_PER_SESSION = 4  # how many 10s batches to collect per run
 
 
@@ -97,6 +99,7 @@ class RunConfig:
 # ─────────────────────────────────────────────────────────────────────────────
 # Driver factory
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def make_driver(headless: bool = True) -> webdriver.Chrome:
     opts = Options()
@@ -117,6 +120,7 @@ def make_driver(headless: bool = True) -> webdriver.Chrome:
 # ─────────────────────────────────────────────────────────────────────────────
 # Base persona
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class BotPersona(ABC):
     """Abstract base class for all bot personas.
@@ -139,8 +143,10 @@ class BotPersona(ABC):
             driver.get(self.cfg.base_url)
             self._wait_for_app(driver)
             self._inject_source(driver)
-            logger.info(f"[{self.source_label}] Session started — "
-                        f"{self.cfg.batches} batches × {BATCH_INTERVAL_SEC}s")
+            logger.info(
+                f"[{self.source_label}] Session started — "
+                f"{self.cfg.batches} batches × {BATCH_INTERVAL_SEC}s"
+            )
             self._run_session(driver)
             # Wait for the final batch to be sent before closing
             time.sleep(BATCH_INTERVAL_SEC + 2)
@@ -154,9 +160,7 @@ class BotPersona(ABC):
 
     def _inject_source(self, driver: webdriver.Chrome) -> None:
         """Inject source label so the JS tracker tags every POST correctly."""
-        driver.execute_script(
-            f"window.__TRACKER_SOURCE__ = '{self.source_label}';"
-        )
+        driver.execute_script(f"window.__TRACKER_SOURCE__ = '{self.source_label}';")
 
     def _wait_for_app(self, driver: webdriver.Chrome, timeout: int = 10) -> None:
         WebDriverWait(driver, timeout).until(
@@ -174,7 +178,8 @@ class BotPersona(ABC):
                 time.sleep(remaining)
 
     def _scroll_to(self, driver: webdriver.Chrome, y: int) -> None:
-        driver.execute_script("""
+        driver.execute_script(
+            """
             var prev = window.scrollY;
             window.scrollTo(0, arguments[0]);
             var delta = window.scrollY - prev;
@@ -183,18 +188,24 @@ class BotPersona(ABC):
                     bubbles: true, deltaY: delta, deltaMode: 0
                 }));
             }
-        """, y)
+        """,
+            y,
+        )
 
     def _scroll_by(self, driver: webdriver.Chrome, delta: int) -> None:
-        driver.execute_script("""
+        driver.execute_script(
+            """
             window.scrollBy(0, arguments[0]);
             document.dispatchEvent(new WheelEvent('wheel', {
                 bubbles: true, deltaY: arguments[0], deltaMode: 0
             }));
-        """, delta)
+        """,
+            delta,
+        )
 
     def _js_click(self, driver: webdriver.Chrome, element) -> None:
-        driver.execute_script("""
+        driver.execute_script(
+            """
             var el = arguments[0];
             var rect = el.getBoundingClientRect();
             var x = rect.left + rect.width / 2;
@@ -206,17 +217,23 @@ class BotPersona(ABC):
                 bubbles: true, clientX: x, clientY: y, button: 0
             }));
             el.click();
-        """, element)
+        """,
+            element,
+        )
 
     def _find_category_links(self, driver: webdriver.Chrome) -> list:
         try:
-            return driver.find_elements(By.CSS_SELECTOR, "[data-category], .category-link, nav a")
+            return driver.find_elements(
+                By.CSS_SELECTOR, "[data-category], .category-link, nav a"
+            )
         except NoSuchElementException:
             return []
 
     def _find_products(self, driver: webdriver.Chrome) -> list:
         try:
-            return driver.find_elements(By.CSS_SELECTOR, ".product, .product-card, [data-product-id]")
+            return driver.find_elements(
+                By.CSS_SELECTOR, ".product, .product-card, [data-product-id]"
+            )
         except NoSuchElementException:
             return []
 
@@ -229,6 +246,7 @@ class BotPersona(ABC):
 # Bot signature: zero mouse movement, no delta_time variance, teleport events
 # Distinct features: move_event_rate≈0, jitter≈0, direction_changes≈0
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class DirectBot(BotPersona):
     """Teleports directly to elements using JS clicks. No mouse events at all."""
@@ -250,7 +268,9 @@ class DirectBot(BotPersona):
             # Click products via JS (no mouse movement)
             products = self._find_products(driver)
             click_interval = random.uniform(0.08, 0.14)  # uniform within batch
-            for product in random.sample(products, min(random.randint(2, 4), len(products))):
+            for product in random.sample(
+                products, min(random.randint(2, 4), len(products))
+            ):
                 self._js_click(driver, product)
                 time.sleep(click_interval)
 
@@ -271,6 +291,7 @@ class DirectBot(BotPersona):
 # Bot signature: constant speed, perfectly straight paths, no direction changes
 # Distinct features: constant_speed_ratio≈1, direction_changes≈0, std_speed≈0
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class LinearBot(BotPersona):
     """Uses ActionChains to move in perfectly straight lines at constant speed."""
@@ -299,7 +320,8 @@ class LinearBot(BotPersona):
                     driver.execute_script(
                         "document.dispatchEvent(new MouseEvent('mousemove',"
                         "{bubbles:true,clientX:arguments[0],clientY:arguments[1]}));",
-                        x, y,
+                        x,
+                        y,
                     )
                     time.sleep(interval)
 
@@ -328,6 +350,7 @@ class LinearBot(BotPersona):
 # Bot signature: scroll-only, no clicks, perfectly uniform scroll intervals
 # Distinct features: scroll_event_rate=high, click_count=0, constant_scroll_delta
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class ScanBot(BotPersona):
     """Scrolls through every page systematically. Never clicks."""
@@ -371,6 +394,7 @@ class ScanBot(BotPersona):
 # Distinct features: rapid_burst_count=high, identical_interval_ratio=high
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class BurstBot(BotPersona):
     """Fires rapid click bursts with identical timing — classic scraper pattern."""
 
@@ -409,6 +433,7 @@ class BurstBot(BotPersona):
 # Bot signature: slow, uniform ActionChains moves, suspiciously low variance
 # Distinct features: std_speed≈0, constant_speed_ratio≈1, predictable turning angles
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class CautiousBot(BotPersona):
     """Moves slowly and uniformly — tries to look human but has zero speed variance."""
@@ -454,7 +479,8 @@ class CautiousBot(BotPersona):
                     driver.execute_script(
                         "document.dispatchEvent(new MouseEvent('mousemove',"
                         "{bubbles:true,clientX:arguments[0],clientY:arguments[1]}));",
-                        x, y,
+                        x,
+                        y,
                     )
                     time.sleep(move_delay)  # uniform within batch — bot signature
 
@@ -492,8 +518,11 @@ PERSONAS: dict[str, type[BotPersona]] = {
 # Entry point
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run Selenium bot personas against the app")
+    parser = argparse.ArgumentParser(
+        description="Run Selenium bot personas against the app"
+    )
     parser.add_argument(
         "--persona",
         choices=list(PERSONAS) + ["all"],
@@ -534,13 +563,19 @@ def main() -> None:
     total = len(targets) * args.sessions
     duration_min = (total * args.batches * BATCH_INTERVAL_SEC) / 60
 
-    logger.info(f"Running {len(targets)} persona(s) × {args.sessions} session(s) = {total} sessions")
-    logger.info(f"Estimated time: ~{duration_min:.1f} min  ({total * args.batches} batches × {BATCH_INTERVAL_SEC}s)")
+    logger.info(
+        f"Running {len(targets)} persona(s) × {args.sessions} session(s) = {total} sessions"
+    )
+    logger.info(
+        f"Estimated time: ~{duration_min:.1f} min  ({total * args.batches} batches × {BATCH_INTERVAL_SEC}s)"
+    )
 
     for persona_name in targets:
         persona_cls = PERSONAS[persona_name]
         for session_num in range(1, args.sessions + 1):
-            logger.info(f"──── {persona_name.upper()}  session {session_num}/{args.sessions} ────")
+            logger.info(
+                f"──── {persona_name.upper()}  session {session_num}/{args.sessions} ────"
+            )
             try:
                 persona_cls(cfg).run()
             except Exception as e:

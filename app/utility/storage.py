@@ -82,7 +82,7 @@ class StorageService(Generic[T]):
             feature_version: Feature extraction schema version
         """
         # If DEBUG is explicitly set to '0', skip writing to storage
-        if os.environ.get("DEBUG", "1") == "0":
+        if os.environ.get("DEBUG", "0") == "0":
             logger.debug("DEBUG=0 set — skipping storage.append write")
             return
 
@@ -102,7 +102,7 @@ class StorageService(Generic[T]):
         row["schema_version"] = schema_version
         row["feature_version"] = feature_version
         row["stored_at"] = datetime.now(timezone.utc).isoformat()
-        
+
         with self.jsonl_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(row) + "\n")
 
@@ -332,7 +332,7 @@ def append(
     """
     target = Path(path) if path is not None else JSONL_PATH
     # Respect DEBUG flag: if DEBUG=0 do not write
-    if os.environ.get("DEBUG", "1") == "0":
+    if os.environ.get("DEBUG", "0") == "0":
         logger.debug("DEBUG=0 set — skipping module-level append write to %s", target)
         return
 
