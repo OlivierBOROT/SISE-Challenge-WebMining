@@ -168,4 +168,4 @@ Descriptions rapides :
 
 ---
 
-Fin du README.
+Olivier BOROT, Léo-Paul Knoepffler et Marin NAGY
