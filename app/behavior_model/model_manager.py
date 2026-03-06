@@ -43,7 +43,4 @@ class BehaviourModelManager:
         comp2 = float(X_pca[0, 1])
         result = {"label": label, "position": {"comp1": comp1, "comp2": comp2}}
 
-        print("\n" * 2, flush=True)
-        print("Predicted cluster label:", label, flush=True)
-        print("PCA position:", result["position"], flush=True)
         return result
