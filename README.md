@@ -74,7 +74,7 @@ cp .env.example .env
 
 ## Docker — Pull image depuis Docker Hub
 
-Si une image publique est disponible sur Docker Hub, vous pouvez la récupérer et lancer le conteneur :
+Une image publique est disponible sur Docker Hub, vous pouvez la récupérer et lancer le conteneur :
 
 ```bash
 docker pull boroto/sise-challenge-webmining:lastest
