@@ -4,6 +4,7 @@ AJAX endpoints
 Only design here function designed to be called from
 front end. No complex logic.
 """
+
 from typing import cast
 
 from flask import Blueprint, current_app, jsonify, render_template, request
@@ -91,7 +92,7 @@ def track_inputs():
     data = request.get_json(force=True)
     session_id: str = data.get("session_id")
     stats: dict = data.get("stats")
-    source: str = stats.pop('_source', "human")
+    source: str = stats.pop("_source", "human")
 
     behaviour_batch = MouseBehaviorBatch(**stats)
     result = app.user_service.predict_bot(behaviour_batch, session_id, source)
@@ -114,16 +115,56 @@ def track_events():
         json: UserEvents payload { user_id, events[] }
 
     Returns:
-        json: { features: dict, user_id: str }
+        json: {
+            "label": str,
+            "x": float,
+            "y": float
+        }
     """
     data = request.get_json(force=True)
     session_id: str = data.get("session_id")
     events: dict = data.get("events")
-    source: str = events.pop('_source', "human")
+    source: str = events.pop("_source", "human")
 
     user_events = UserEvents(**events)
     result = app.user_service.predict_behaviour(user_events, session_id, source)
 
-    return jsonify({
-        "label": result
-    })
+    if not result:
+        return jsonify(
+            {"warning": "Not enough data to run a predict. 10 seconds required"}
+        )
+
+    return jsonify(result)
+
+
+@ajax.route("/projection", methods=["GET"])
+def projection():
+    """
+    Retrive projection plot data
+
+    Returns:
+    json: {
+        "plot": {
+            "x": list,
+            "y": list,
+            "label": list
+        },
+        "clusters": {
+            "0": {
+                "name": str,
+                "description": str
+            }
+        }
+    }
+    """
+    plot_data = app.plot_service.projection()
+    clusters_data = app.plot_service.get_clusters()
+    pca_data = {}
+    # If plot_service exposes pca_info, include it
+    if hasattr(app.plot_service, "pca_info"):
+        try:
+            pca_data = app.plot_service.pca_info()
+        except Exception:
+            pca_data = {}
+
+    return jsonify({"plot": plot_data, "clusters": clusters_data, "pca": pca_data})

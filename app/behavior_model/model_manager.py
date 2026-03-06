@@ -1,11 +1,15 @@
 import os
 import warnings
 from typing import Any, Dict
-
+import warnings
 import numpy as np
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
 from joblib import load
 
 from app.schemas import BehaviourFeatureSet
+
+from app.schemas import BehaviourFeatureSet, ClusteringResult
 
 
 class BehaviourModelManager:
@@ -32,8 +36,8 @@ class BehaviourModelManager:
             raise FileNotFoundError(f"KMeans model not found at {kmeans_path}")
 
         self.scaler = load(scaler_path)
-        self.pca = load(pca_path)
-        self.kmeans = load(kmeans_path)
+        self.pca: PCA = load(pca_path)
+        self.kmeans: KMeans = load(kmeans_path)
 
     def predict(self, features: BehaviourFeatureSet) -> Dict[str, Any]:
         X = np.array([features.vector], dtype=float)
@@ -44,9 +48,10 @@ class BehaviourModelManager:
         label = int(self.kmeans.predict(X_pca)[0])
         comp1 = float(X_pca[0, 0])
         comp2 = float(X_pca[0, 1])
-        result = {"label": label, "position": {"comp1": comp1, "comp2": comp2}}
+        result = {
+            "label": label, 
+            "x": comp1, 
+            "y": comp2
+        }
 
-        print("\n" * 2, flush=True)
-        print("Predicted cluster label:", label, flush=True)
-        print("PCA position:", result["position"], flush=True)
         return result

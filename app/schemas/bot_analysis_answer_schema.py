@@ -10,3 +10,12 @@ class DetectionResult:
     persona: str = "unknown"    # decoded class label (e.g. "human", "bot_scan")
     schema_version: str = "1.0"  # detection output schema version
     feature_version: str = "1.0"  # feature extraction schema version
+
+
+@dataclass
+class ClusteringResult:
+    label: int
+    pc1: float
+    pc2: float
+    schema_version: str = "1.0"  # detection output schema version
+    feature_version: str = "1.0"  # feature extraction schema version
