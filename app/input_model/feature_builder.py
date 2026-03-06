@@ -48,12 +48,13 @@ FEATURE_COLUMNS = [
     "fields_filled",              # number of fields touched
 
     # D — Scroll
-    "scroll_depth_max",           # max scroll depth reached  — headless → 0
+    # scroll_depth_max excluded: JS timing bug (wheel fires before scrollY updates)
+    # makes humans always read 0; stored in JSONL but not used for inference.
     "scroll_event_rate",          # scroll frequency
     "scroll_direction_changes",   # direction reversals       — bot → 0
 
     # E — Session / Navigation
-    "session_duration",           # total duration (sec)      — bot → very short
+    # session_duration excluded: simulator artifact (fixed batches × fixed interval).
     "scroll_click_ratio",         # scroll / clicks           — headless → 0
 ]
 

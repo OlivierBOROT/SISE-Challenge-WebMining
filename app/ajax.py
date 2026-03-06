@@ -97,7 +97,12 @@ def track_inputs():
     behaviour_batch = MouseBehaviorBatch(**stats)
     result = app.user_service.predict_bot(behaviour_batch, session_id, source)
 
-    return jsonify({"label": result.label, "score": result.score})
+    return jsonify({
+        "label": result.label,
+        "score": result.score,
+        "confidence": result.confidence,
+        "persona": result.persona,
+    })
 
 
 @ajax.route("/track_events", methods=["POST"])

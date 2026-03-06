@@ -254,9 +254,10 @@ class DirectBot(BotPersona):
                 self._js_click(driver, product)
                 time.sleep(click_interval)
 
-            # Instant scroll via JS — vary step and max depth per batch
+            # Instant scroll via JS — vary step and max depth relative to page
             scroll_step = random.randint(150, 250)
-            scroll_max = random.randint(1500, 2500)
+            _page_h = driver.execute_script("return document.body.scrollHeight")
+            scroll_max = int(random.uniform(0.3, 0.9) * _page_h)
             scroll_interval = random.uniform(0.04, 0.07)  # still uniform
             for y in range(0, scroll_max, scroll_step):
                 self._scroll_to(driver, y)
@@ -340,17 +341,17 @@ class ScanBot(BotPersona):
             batch_start = time.time()
             logger.info(f"[{self.source_label}] Batch {batch + 1}/{self.cfg.batches}")
 
-            # Scroll down the full page in perfectly uniform steps — vary
-            # step and interval per batch so supervised models learn the
-            # uniformity pattern, not a specific value.
+            # Scroll to a random fraction of the page — vary depth per batch
+            # so the model learns scroll uniformity, not a fixed depth ceiling.
             step = random.randint(120, 180)
             interval = random.uniform(0.06, 0.11)  # still uniform within batch
-            for y in range(0, page_height, step):
+            target_depth = int(random.uniform(0.4, 1.0) * page_height)
+            for y in range(0, target_depth, step):
                 self._scroll_to(driver, y)
                 time.sleep(interval)
 
-            # Scroll back to top identically
-            for y in range(page_height, 0, -step):
+            # Scroll back to top from target depth
+            for y in range(target_depth, 0, -step):
                 self._scroll_to(driver, y)
                 time.sleep(interval)
 

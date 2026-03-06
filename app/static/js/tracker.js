@@ -61,21 +61,29 @@ function trackInputs() {
         }
 
         // Send stats to python
-        const response = await fetch('ajax/track_inputs', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                stats: stats,
-                session_id: getCookie('session_id')
+        try {
+            const response = await fetch('ajax/track_inputs', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    stats: stats,
+                    session_id: getCookie('session_id')
+                })
             })
-        })
-        timer = analysisInterval;
-        updateTimerDisplay();
-        const result = await response.json();
-        if (!response.warning) {
-            setBotResult(result.label, result.score);
+            timer = analysisInterval;
+            updateTimerDisplay();
+            if (response.ok) {
+                const result = await response.json();
+                if (result.label !== undefined) {
+                    setBotResult(result.label, result.score ?? 0, result.confidence ?? 0, result.persona ?? "unknown");
+                }
+            }
+        } catch (err) {
+            console.warn('[trackInputs] fetch failed:', err);
+            timer = analysisInterval;
+            updateTimerDisplay();
         }
     }, analysisInterval * 1000);
 }
@@ -95,24 +103,30 @@ function trackEvents() {
             payload._source = window.__TRACKER_SOURCE__;
         }
 
-        const response = await fetch('ajax/track_events', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json' 
-            },
-            body: JSON.stringify({
-                events: payload,
-                session_id: getCookie('session_id')
-            }),
-        });
-        const result = await response.json();
-        if (!result.warning) {
-            setClusterResult(result.label.toString());
-            document.dispatchEvent(new CustomEvent('behaviourUpdate', {
-                detail: result,
-                bubbles: true,
-                cancelable: false
-            }))
+        try {
+            const response = await fetch('ajax/track_events', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify({
+                    events: payload,
+                    session_id: getCookie('session_id')
+                }),
+            });
+            if (response.ok) {
+                const result = await response.json();
+                if (!result.warning) {
+                    setClusterResult(result.label.toString());
+                    document.dispatchEvent(new CustomEvent('behaviourUpdate', {
+                        detail: result,
+                        bubbles: true,
+                        cancelable: false
+                    }))
+                }
+            }
+        } catch (err) {
+            console.warn('[trackEvents] fetch failed:', err);
         }
     }, 1000);
 }
