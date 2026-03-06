@@ -54,8 +54,6 @@ FEATURE_COLUMNS = [
 
     # E — Session / Navigation
     "session_duration",           # total duration (sec)      — bot → very short
-    "pages_visited",              # number of pages visited
-    "revisit_rate",               # revisit rate              — bot → 0
     "scroll_click_ratio",         # scroll / clicks           — headless → 0
 ]
 
@@ -105,9 +103,9 @@ class InputFeatureBuilder:
         )
 
         scroll_click_ratio = (
-            sc.scroll_depth_max / cl.total_click_events
+            sc.total_scroll_events / cl.total_click_events
             if cl.total_click_events > 0
-            else sc.scroll_depth_max
+            else float(sc.total_scroll_events)
         )
 
         features = {
@@ -144,8 +142,6 @@ class InputFeatureBuilder:
 
             # E — Session
             "session_duration":        self._safe(n.session_duration_sec),
-            "pages_visited":           float(len(n.pages_visited)),
-            "revisit_rate":            self._safe(n.revisit_rate),
             "scroll_click_ratio":      self._safe(scroll_click_ratio),
         }
 

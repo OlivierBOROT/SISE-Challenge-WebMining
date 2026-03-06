@@ -120,10 +120,7 @@ export class InputTracker {
         this._onWheel  = this._handleWheel.bind(this);
         this._onFocusIn  = this._handleFocusIn.bind(this);
         this._onFocusOut = this._handleFocusOut.bind(this);
-        this._onPageClick = this._handlePageClick.bind(this);
-        this._onPaginationMut = this._handlePaginationMutation.bind(this);
-        this._paginationObserver = null;
-        this._lastPage = window.__currentProductPage ?? null;
+
     }
 
     /* ── Cycle de vie ── */
@@ -135,20 +132,6 @@ export class InputTracker {
         document.addEventListener("wheel",     this._onWheel,  { passive: true });
         document.addEventListener("focusin",   this._onFocusIn);
         document.addEventListener("focusout",  this._onFocusOut);
-        document.addEventListener("click", this._onPageClick);
-
-        // Observe pagination DOM changes (for SPA or programmatic updates)
-        try {
-            const pagesRoot = document.querySelectorAll('.pagination-pages');
-            if (pagesRoot && pagesRoot.length) {
-                this._paginationObserver = new MutationObserver(this._onPaginationMut);
-                pagesRoot.forEach((el) =>
-                    this._paginationObserver.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
-                );
-            }
-        } catch (err) {
-            // ignore observer errors in older browsers
-        }
     }
 
     stop() {
@@ -158,11 +141,6 @@ export class InputTracker {
         document.removeEventListener("wheel",     this._onWheel);
         document.removeEventListener("focusin",   this._onFocusIn);
         document.removeEventListener("focusout",  this._onFocusOut);
-        document.removeEventListener("click", this._onPageClick);
-        if (this._paginationObserver) {
-            try { this._paginationObserver.disconnect(); } catch (e) {}
-            this._paginationObserver = null;
-        }
     }
 
     /* ── Handlers ── */
@@ -187,7 +165,10 @@ export class InputTracker {
     }
 
     _handleWheel(e) {
-        this.scrolls.push({ dy: e.deltaY, t: performance.now() });
+        const pos = window.scrollY || 0;
+        const maxScroll = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1);
+        const scrollPos = Math.min(1, Math.max(0, pos / maxScroll));
+        this.scrolls.push({ dy: e.deltaY, t: performance.now(), pos: scrollPos });
     }
 
     _handleFocusIn(e) {
@@ -292,7 +273,11 @@ export class InputTracker {
         const sc    = this.scrolls;
         const viewH = window.innerHeight;
         const scrollDeltasRel = [];
-        for (const s of sc) scrollDeltasRel.push(Math.abs(s.dy) / viewH);
+        const scrollPositions = [];
+        for (const s of sc) {
+            scrollDeltasRel.push(Math.abs(s.dy) / viewH);
+            if (s.pos !== undefined) scrollPositions.push(s.pos);
+        }
         const scrollInts = [];
         for (let i = 1; i < sc.length; i++) scrollInts.push((sc[i].t - sc[i - 1].t) / 1000);
         let scrollDirChanges = 0;
@@ -314,6 +299,7 @@ export class InputTracker {
             scroll_direction_changes:     scrollDirChanges,
             continuous_scroll_sequences:  contSequences,
             mean_scroll_interval_sec:     _mean(scrollInts),
+            scroll_depth_max:             scrollPositions.length > 0 ? Math.max(...scrollPositions) : 0,
         };
     }
 
@@ -362,6 +348,7 @@ export class InputTracker {
                     entropy_speed: 0,
                 },
                 form,
+                navigation: this._buildNavigation(elapsed),
             };
         }
 
@@ -494,32 +481,12 @@ export class InputTracker {
             scroll,
             heuristics,
             form,
-            navigation: {
-                pages_visited: [],
-                unique_pages: 0,
-                revisit_rate: 0.0,
-                session_duration_sec: elapsed,
-            },
+            navigation: this._buildNavigation(elapsed),
         };
     }
 
-    _handlePageClick(e) {
-        const btn = e.target.closest?.('.pagination button, .pagination-btn, .page-number');
-        if (!btn) return;
-        const pageNum = parseInt(btn.value, 10);
-        if (isNaN(pageNum) || pageNum < 1) return;
-        try { window.__currentProductPage = pageNum; } catch (ex) {}
-        this._lastPage = pageNum;
-    }
-
-    _handlePaginationMutation(mutations) {
-        const active = document.querySelector('.pagination-pages .page-number.active, .pagination .page-number.active');
-        if (!active) return;
-        const v = parseInt(active.value, 10);
-        if (isNaN(v)) return;
-        if (this._lastPage === v) return;
-        this._lastPage = v;
-        try { window.__currentProductPage = v; } catch (ex) {}
+    _buildNavigation(elapsed) {
+        return { session_duration_sec: elapsed };
     }
 
     /** Alias sémantique de computeFeatures(). */
