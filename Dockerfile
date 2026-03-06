@@ -28,6 +28,7 @@ COPY . .
 
 EXPOSE 8000
 
-# Default command — uses the existing run.py entrypoint
-CMD ["python", "run.py"]
+# Default command — run the app with Gunicorn using the wsgi entrypoint
+# Use the Python API config file `gunicorn_conf.py` for sensible defaults
+CMD ["gunicorn", "wsgi:app", "-c", "gunicorn_conf.py"]
 

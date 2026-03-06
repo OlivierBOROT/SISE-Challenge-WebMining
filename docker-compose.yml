@@ -5,6 +5,10 @@ services:
       - "8000:8000"
     environment:
       - DATA_PATH=/app/data
+      - DEBUG=0
+      - GUNICORN_CMD_ARGS=--log-level info
     volumes:
-      - ./data:/app/data:ro
+      - ./data:/app/data:rw
+      # Mount static code so we can iterate in dev; remove or change in production
+      - ./:/app:ro
     restart: unless-stopped
