@@ -1,20 +1,33 @@
-# Read the doc: https://huggingface.co/docs/hub/spaces-sdks-docker
-# you will also find guides on how best to write your Dockerfile
+FROM python:3.13-slim
 
-FROM python:3.11
-
-RUN useradd -m -u 1000 user
-USER user
-ENV PATH="/home/user/.local/bin:$PATH"
-
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
-COPY --chown=user ./requirements.txt requirements.txt
-RUN pip install --no-cache-dir --upgrade -r requirements.txt
+# Install OS-level build dependencies required by some scientific packages
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends \
+		build-essential \
+		gcc \
+		g++ \
+		gfortran \
+		libopenblas-dev \
+		liblapack-dev \
+		git \
+	&& rm -rf /var/lib/apt/lists/*
 
-COPY --chown=user . /app
+# Copy pyproject first to leverage Docker layer caching for deps
+COPY pyproject.toml pyproject.toml
 
-EXPOSE 7860
+# Upgrade pip and install package (will install dependencies from pyproject)
+RUN pip install --upgrade pip setuptools wheel
+RUN pip install --no-cache-dir .
 
-CMD ["gunicorn", "--bind", ":7860", "--threads", "6", "app:app"]
+# Copy application code
+COPY . .
+
+EXPOSE 8000
+
+# Default command — uses the existing run.py entrypoint
+CMD ["python", "run.py"]
 
