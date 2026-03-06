@@ -48,8 +48,7 @@ def render_products():
     """
     category = request.args.get("category", "all")
     query = request.args.get("query")
-    # default page should be 1 (client-side code expects 1-indexed pages)
-    page = request.args.get("page", 1, type=int)
+    page = request.args.get("page", 0, type=int)
 
     if query:
         products = app.product_data.search(query)

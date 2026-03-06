@@ -112,7 +112,7 @@ class ProductData:
         """
         # Clamp invalid low page numbers to 1 instead of raising an error.
         if page < 1:
-            page = 1
+            raise ValueError("page must be >= 1")
         if count < 1:
             raise ValueError("count must be >= 1")
 

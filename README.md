@@ -77,8 +77,7 @@ cp .env.example .env
 Si une image publique est disponible sur Docker Hub, vous pouvez la récupérer et lancer le conteneur :
 
 ```bash
-# exemple : remplacez par le nom de l'image voulue
-docker pull boroto/sise-challenge-webmining:latest
+docker pull boroto/sise-challenge-webmining:lastest
 
 # lancer le container (expose port 7860)
 docker run --rm -p 7860:7860 boroto/sise-challenge-webmining:latest
@@ -145,7 +144,7 @@ SISE-Challenge-WebMining/
 │   ├── ajax.py                    # endpoints AJAX (render_products, projection...)
 │   ├── routes.py                  # HTML page routes
 │   ├── behavior_model/            # comportement: feature_builder, model_manager
-+│   ├── input_model/               # input-specific feature_builder, model_manager
+│   ├── input_model/               # input-specific feature_builder, model_manager
 │   ├── services/                  # product_data, user_service, etc.
 │   ├── static/                    # js/, css/, images/
 │   └── templates/                 # jinja2 templates and elements

@@ -7,8 +7,18 @@ const analyticsSection = main.querySelector('section.analitics');
 const analyticsNav = analyticsSection.querySelector('ul.nav');
 
 
+// if the page is loaded under the huggingface.co wrapper, prefer the HF space host
+// Use protocol-relative URL (//host) so the browser picks https when the page is secure.
+const SPACE_HOST = "pluvier-sise-challenge-webmining.hf.space";
+const baseUrl = (window.location.hostname.endsWith("hf.space") || window.location.hostname === SPACE_HOST)
+    ? `//${window.location.host}`
+    : `https://${SPACE_HOST}`;
+
+// Debugging helpers: log chosen baseUrl and location details when troubleshooting mixed-content
+console.debug('[layout] baseUrl:', baseUrl, 'location.origin:', window.location.origin, 'protocol:', window.location.protocol);
+
 async function renderCategories() {
-    const response = await fetch('ajax/render_categories');
+    const response = await fetch(`${baseUrl}/ajax/render_categories`);
     const html = await response.text();
     categoriesSection.innerHTML = html;
     // Bind click
@@ -30,7 +40,7 @@ async function renderProducts(category="all", page=1) {
         query: searchInput.value,
         page: page
     });
-    const response = await fetch(`ajax/render_products?${params}`);
+    const response = await fetch(`/ajax/render_products?${params}`);
     const html = await response.text();
     productsSection.innerHTML = html;
     // expose current product pagination page for trackers
