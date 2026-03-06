@@ -116,20 +116,8 @@ gunicorn -c gunicorn_conf.py wsgi:app
 
 ## Présentation / Démo
 
-Ajoutez ici une courte présentation destinée à un public non-technique et les étapes de la démo.
-
-Points recommandés pour la présentation :
-
-- Objectif de l'application (1 phrase)
-- Scénario de démonstration pas à pas (3–5 étapes)
-- Commandes rapides pour reproduire la démo localement
-
-Exemple de script de démo rapide :
-
-1. `python run.py`
-2. Ouvrir la page principale
-3. Sélectionner une catégorie → la liste des produits se charge via AJAX
-4. Aller dans Analytics → afficher le scatter et lire la variance PCA
+Pour utiliser l'application, nous vous recommandons de lancer l'application et de parcourir l'interface comme si vous étiez un client.
+Pendant votre shopping, votre souris est traquée et vous pouvez observer les "conclusions" que nous pouvons en tirer sur le côté droit.
 
 ---
 
