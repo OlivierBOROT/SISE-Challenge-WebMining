@@ -3,6 +3,8 @@ const main = document.querySelector('main');
 const searchInput = header.querySelector('input.search-bar');
 const categoriesSection = main.querySelector('section.categories');
 const productsSection = main.querySelector('section.products');
+const analyticsSection = main.querySelector('section.analitics');
+const analyticsNav = analyticsSection.querySelector('ul.nav');
 
 
 async function renderCategories() {
@@ -56,9 +58,30 @@ async function renderProducts(category="all", page=1) {
 
 
 
+
 searchInput.addEventListener('change', () => {
     renderProducts();
 })
+
+analyticsNav.querySelectorAll('li').forEach(li => {
+    li.addEventListener('click', (e) => {
+        const previousLi = analyticsNav.querySelector('li.active');
+        previousLi.classList.remove('active');
+        li.classList.add('active');
+
+        const tabId = li.dataset.tabId;
+        const previousTab = analyticsSection.querySelector('.tab.active');
+        previousTab.classList.remove('active');
+        const tab = analyticsSection.querySelector(`.tab[data-tab-id="${tabId}"]`);
+        tab.classList.add('active');
+
+        document.dispatchEvent(new CustomEvent('tabSwitch', {
+            bubbles: true,
+            cancelable: false
+        }))
+    })
+})
+
 
 renderCategories();
 renderProducts();

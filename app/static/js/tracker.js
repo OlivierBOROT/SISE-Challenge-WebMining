@@ -2,7 +2,9 @@ import { InputTracker } from './modules/inputTracker.js';
 import { EventTracker } from './modules/interactionTracker.js';
 import { drawTrackPlot } from './modules/mouseTrackPlot.js';
 import { drawSpeedPlot } from './modules/mouseSpeedPlot.js';
+import { drawScatterPlot } from './modules/scatterPlot.js';
 import { initUserResult, setClusterResult } from './modules/userResult.js';
+import { setBotResult } from './modules/botResult.js';
 
 const inputTracker = new InputTracker();
 const eventTracker = new EventTracker();
@@ -72,6 +74,9 @@ function trackInputs() {
         timer = analysisInterval;
         updateTimerDisplay();
         const result = await response.json();
+        if (!response.warning) {
+            setBotResult(result.label, result.score);
+        }
     }, analysisInterval * 1000);
 }
 
@@ -101,7 +106,22 @@ function trackEvents() {
             }),
         });
         const result = await response.json();
+        if (!result.warning) {
+            setClusterResult(result.label.toString());
+            document.dispatchEvent(new CustomEvent('behaviourUpdate', {
+                detail: result,
+                bubbles: true,
+                cancelable: false
+            }))
+        }
     }, 1000);
+}
+
+
+async function renderClusters() {
+    const response = await fetch('ajax/projection');
+    const content = await response.json();
+    drawScatterPlot(content.plot);
 }
 
 
@@ -109,6 +129,7 @@ function trackEvents() {
 drawTrackPlot();
 drawSpeedPlot();
 initUserResult();
+renderClusters();
 
 // Track user inputs (mouse, clicks, scroll, form)
 trackInputs();

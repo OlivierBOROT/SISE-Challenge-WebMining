@@ -112,7 +112,11 @@ def track_events():
         json: UserEvents payload { user_id, events[] }
 
     Returns:
-        json: { features: dict, user_id: str }
+        json: {
+            "label": str,
+            "x": float,
+            "y": float
+        }
     """
     data = request.get_json(force=True)
     session_id: str = data.get("session_id")
@@ -122,6 +126,37 @@ def track_events():
     user_events = UserEvents(**events)
     result = app.user_service.predict_behaviour(user_events, session_id, source)
 
+    if not result:
+        return jsonify({
+            "warning": "Not enough data to run a predict. 10 seconds required"
+        })
+
+    return jsonify(result)
+
+@ajax.route("/projection", methods=["GET"])
+def projection():
+    """
+    Retrive projection plot data
+
+    Returns:
+    json: {
+        "plot": {
+            "x": list,
+            "y": list,
+            "label": list
+        },
+        "clusters": {
+            "0": {
+                "name": str,
+                "description": str
+            }
+        }
+    }
+    """
+    plot_data = app.plot_service.projection()
+    clusters_data = app.plot_service.get_clusters()
+
     return jsonify({
-        "label": result
+        "plot": plot_data,
+        "clusters": clusters_data
     })
