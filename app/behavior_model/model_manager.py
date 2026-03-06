@@ -1,4 +1,5 @@
 import os
+import warnings
 from typing import Any, Dict
 
 import numpy as np
@@ -37,7 +38,9 @@ class BehaviourModelManager:
     def predict(self, features: BehaviourFeatureSet) -> Dict[str, Any]:
         X = np.array([features.vector], dtype=float)
         X_scaled = self.scaler.transform(X)
-        X_pca = self.pca.transform(X_scaled)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="X does not have valid feature names")
+            X_pca = self.pca.transform(X_scaled)
         label = int(self.kmeans.predict(X_pca)[0])
         comp1 = float(X_pca[0, 0])
         comp2 = float(X_pca[0, 1])

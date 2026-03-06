@@ -43,6 +43,10 @@ _MODELS_DIR = Path(os.environ.get("DATA_PATH", "data")) / "models"
 _INPUT_FEATURES_JSONL = "features/input_features.jsonl"
 _RANDOM_STATE = 42
 
+# Supervised model paths (RandomForest pipeline + LabelEncoder)
+_SUPERVISED_CLF_PATH = _MODELS_DIR / "supervised_input_classifier.joblib"
+_SUPERVISED_LE_PATH  = _MODELS_DIR / "supervised_input_label_encoder.joblib"
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Model registry
@@ -156,7 +160,53 @@ class InputModelManager:
         self.storage = storage
         self.config = config
         self._model: BaseEstimator | None = None
+        self._supervised_clf: Any = None
+        self._supervised_le: Any = None
+        self._try_load_supervised()
         logger.debug(f"Initializing TrainingService with config: {config.model_type.value}")
+
+    def _try_load_supervised(self) -> bool:
+        """Load supervised pipeline + label encoder if available. Returns True on success."""
+        if _SUPERVISED_CLF_PATH.exists() and _SUPERVISED_LE_PATH.exists():
+            try:
+                self._supervised_clf = joblib.load(_SUPERVISED_CLF_PATH)
+                self._supervised_le  = joblib.load(_SUPERVISED_LE_PATH)
+                logger.info(f"Loaded supervised classifier from {_SUPERVISED_CLF_PATH}")
+                return True
+            except Exception as exc:
+                logger.warning(f"Could not load supervised model: {exc}")
+                self._supervised_clf = None
+                self._supervised_le  = None
+        return False
+
+    def _predict_supervised(self, feature_set: InputFeatureSet) -> DetectionResult:
+        """Predict using the supervised pipeline + label encoder."""
+        X = to_numpy(feature_set)  # shape (1, N_FEATURES)
+
+        encoded_pred = int(self._supervised_clf.predict(X)[0])
+        persona: str = str(self._supervised_le.inverse_transform([encoded_pred])[0])
+
+        label = "human" if persona == "human" else "bot"
+        anomaly = 1 if label == "human" else -1
+
+        # bot probability = probability of the class labelled "bot" (or first non-human class)
+        classes = list(self._supervised_le.classes_)
+        proba = self._supervised_clf.predict_proba(X)[0]
+        # Handle both binary ("bot"/"human") and multi-class ("bot_scan", …) label sets
+        bot_indices = [i for i, c in enumerate(classes) if c != "human"]
+        bot_prob = float(sum(proba[i] for i in bot_indices))
+
+        score = round(bot_prob, 6)
+        confidence = round(score if label == "bot" else 1.0 - score, 4)
+
+        return DetectionResult(
+            label=label,
+            score=score,
+            anomaly=anomaly,
+            confidence=confidence,
+            model_type="supervised_rf",
+            persona=persona,
+        )
 
     def _build_model(self, cfg: ModelConfig | None = None) -> BaseEstimator:
         """Instantiate the sklearn estimator described by config (unfitted)."""
@@ -205,13 +255,11 @@ class InputModelManager:
             rng.uniform(2.0, 8.0, n),                              # field_avg_duration
             rng.integers(1, 6, n).astype(float),                   # fields_filled
 
-            # D — Scroll
-            rng.uniform(0.25, 0.90, n),                            # scroll_depth_max
+            # D — Scroll  (scroll_depth_max excluded — unreliable from JS timing)
             rng.uniform(0.5, 3.0, n),                              # scroll_event_rate
             rng.integers(1, 8, n).astype(float),                   # scroll_direction_changes
 
-            # E — Session / Navigation
-            rng.lognormal(3.5, 0.7, n),                            # session_duration (>10s)
+            # E — Session / Navigation  (session_duration excluded — leaks time info)
             rng.uniform(0.05, 0.6, n),                             # scroll_click_ratio
         ])
         # fmt: on
@@ -377,22 +425,31 @@ class InputModelManager:
         if cfg is None:
             cfg = self.config
 
+        # Use supervised model when available (preferred path)
+        if self._supervised_clf is not None:
+            return self._predict_supervised(feature_set)
+
         if model is None:
             model = self.get_model(cfg)
 
         X = to_numpy(feature_set)
         anomaly: int = int(model.predict(X)[0])
-        score: float = (float(model.decision_function(X)[0]) + 1) / 2
+        raw_score: float = float(model.decision_function(X)[0])
+        # Normalise IF score to [0,1] where low = bot, high = human
+        # Then invert so score = bot probability for UI consistency
+        human_prob = (raw_score + 1) / 2
+        score = round(1.0 - human_prob, 6)
 
         label = "human" if anomaly == 1 else "bot"
         divisor = _CONF_DIVISOR[cfg.model_type]
-        confidence = min(1.0, abs(score) / divisor)
+        confidence = round(min(1.0, abs(raw_score) / divisor), 4)
 
         return DetectionResult(
             label=label,
-            score=round(score, 6),
+            score=score,
             anomaly=anomaly,
-            confidence=round(confidence, 4),
+            confidence=confidence,
             model_type=cfg.model_type.value,
+            persona=label,
         )
 

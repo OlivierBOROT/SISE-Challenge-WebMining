@@ -98,7 +98,9 @@ def track_inputs():
 
     return jsonify({
         "label": result.label,
-        "score": result.score
+        "score": result.score,
+        "confidence": result.confidence,
+        "persona": result.persona,
     })
 
 

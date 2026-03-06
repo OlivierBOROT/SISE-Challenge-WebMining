@@ -14,7 +14,7 @@ import os
 import json
 import logging
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TypeVar, Generic, Type, Dict, List
 
@@ -94,7 +94,7 @@ class StorageService(Generic[T]):
         row["source"] = source
         row["schema_version"] = schema_version
         row["feature_version"] = feature_version
-        row["stored_at"] = datetime.utcnow().isoformat()
+        row["stored_at"] = datetime.now(timezone.utc).isoformat()
         
         with self.jsonl_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(row) + "\n")
@@ -326,7 +326,7 @@ def append(
     row["source"] = source
     row["schema_version"] = schema_version
     row["feature_version"] = feature_version
-    row["stored_at"] = datetime.utcnow().isoformat()
+    row["stored_at"] = datetime.now(timezone.utc).isoformat()
 
     with target.open("a", encoding="utf-8") as f:
         f.write(json.dumps(row) + "\n")
