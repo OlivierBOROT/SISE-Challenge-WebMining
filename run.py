@@ -20,9 +20,11 @@ from app import create_app
 
 def main():
     app = create_app()
-    # For now we only print status; run the server in dev to inspect
+    # Read port and debug from environment so local dev and container runs match
+    port = int(os.environ.get("PORT", "7860"))
+    debug = os.environ.get("DEBUG", "1") in ("1", "true", "True")
     # Bind to 0.0.0.0 so the server is reachable from outside the container
-    app.run(debug=True, host="0.0.0.0", port=8000)
+    app.run(debug=debug, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":

@@ -10,20 +10,20 @@ Supports both JSONL (current) and future migration to database backends.
 
 from __future__ import annotations
 
-import os
 import json
 import logging
+import os
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TypeVar, Generic, Type, Dict, List
+from typing import Dict, Generic, List, Type, TypeVar
 
 import numpy as np
 
 from app.utility.feature_set_protocol import FeatureSet
 
 # Type variable for generic feature sets, bound to FeatureSet protocol
-T = TypeVar('T', bound=FeatureSet)
+T = TypeVar("T", bound=FeatureSet)
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ class StorageService(Generic[T]):
             parquet_path: Path to Parquet snapshot. Defaults to data_dir/features.parquet
         """
         self.feature_class = feature_class
-        
+
         if data_dir is None:
             self.data_dir = Path(os.environ.get("DATA_PATH", "data"))
         else:
@@ -81,15 +81,22 @@ class StorageService(Generic[T]):
             schema_version: Storage schema version (for future migrations)
             feature_version: Feature extraction schema version
         """
+        # If DEBUG is explicitly set to '0', skip writing to storage
+        if os.environ.get("DEBUG", "1") == "0":
+            logger.debug("DEBUG=0 set — skipping storage.append write")
+            return
+
         self.data_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Convert feature set to dict (handles dataclasses and objects with __dict__)
         try:
             row = asdict(feature_set)  # type: ignore
         except TypeError:
             # Fallback for non-dataclass objects
-            row = {k: v for k, v in feature_set.__dict__.items() if not k.startswith('_')}
-        
+            row = {
+                k: v for k, v in feature_set.__dict__.items() if not k.startswith("_")
+            }
+
         # Add versioning and metadata
         row["source"] = source
         row["schema_version"] = schema_version
@@ -121,17 +128,17 @@ class StorageService(Generic[T]):
                     continue
                 try:
                     row = json.loads(line)
-                    
+
                     # Filter by source if specified
                     if source and row.get("source") != source:
                         continue
-                    
+
                     # Remove metadata fields before creating feature set
                     row.pop("source", None)
                     row.pop("schema_version", None)
                     row.pop("feature_version", None)
                     row.pop("stored_at", None)
-                    
+
                     # Create feature set instance
                     feature_set = self.feature_class(**row)
                     results.append(feature_set)
@@ -140,7 +147,9 @@ class StorageService(Generic[T]):
 
         return results
 
-    def load_numpy(self, source: str | None = None, feature_columns: List[str] | None = None) -> np.ndarray:
+    def load_numpy(
+        self, source: str | None = None, feature_columns: List[str] | None = None
+    ) -> np.ndarray:
         """
         Load all stored feature vectors as a numpy array of shape (N, N_FEATURES).
 
@@ -157,10 +166,12 @@ class StorageService(Generic[T]):
             return np.empty((0, n_features), dtype=float)
 
         if feature_columns:
-            return np.vstack([
-                [fs.features.get(col, 0.0) for col in feature_columns]
-                for fs in feature_sets
-            ])
+            return np.vstack(
+                [
+                    [fs.features.get(col, 0.0) for col in feature_columns]
+                    for fs in feature_sets
+                ]
+            )
         else:
             # Use vectors directly
             return np.vstack([fs.vector for fs in feature_sets])
@@ -186,7 +197,9 @@ class StorageService(Generic[T]):
         try:
             import pandas as pd
         except ImportError:
-            raise ImportError("export_parquet() requires pandas: pip install pandas pyarrow")
+            raise ImportError(
+                "export_parquet() requires pandas: pip install pandas pyarrow"
+            )
 
         if src is None:
             src = self.jsonl_path
@@ -202,9 +215,7 @@ class StorageService(Generic[T]):
             feature_columns = list(feature_sets[0].features.keys())
 
         rows = [
-            {
-                **{col: fs.features.get(col, 0.0) for col in feature_columns}
-            }
+            {**{col: fs.features.get(col, 0.0) for col in feature_columns}}
             for fs in feature_sets
         ]
         df = pd.DataFrame(rows)
@@ -213,7 +224,9 @@ class StorageService(Generic[T]):
         logger.info(f"Exported {len(rows)} records to {dst}")
         return dst
 
-    def load_parquet(self, path: Path | None = None, feature_columns: List[str] | None = None) -> np.ndarray:
+    def load_parquet(
+        self, path: Path | None = None, feature_columns: List[str] | None = None
+    ) -> np.ndarray:
         """
         Load feature vectors from a Parquet snapshot as a numpy array.
 
@@ -227,7 +240,9 @@ class StorageService(Generic[T]):
         try:
             import pandas as pd
         except ImportError:
-            raise ImportError("load_parquet() requires pandas: pip install pandas pyarrow")
+            raise ImportError(
+                "load_parquet() requires pandas: pip install pandas pyarrow"
+            )
 
         if path is None:
             path = self.parquet_path
@@ -241,7 +256,7 @@ class StorageService(Generic[T]):
             df = pd.read_parquet(path, columns=feature_columns)
         else:
             df = pd.read_parquet(path)
-        
+
         return df.to_numpy(dtype=float)
 
     def record_count(self) -> int:
@@ -267,7 +282,7 @@ class StorageService(Generic[T]):
         counts: Dict[str, int] = {}
         if not self.jsonl_path.exists():
             return counts
-        
+
         with self.jsonl_path.open("r", encoding="utf-8") as f:
             for line in f:
                 if line.strip():
@@ -277,7 +292,7 @@ class StorageService(Generic[T]):
                         counts[src] = counts.get(src, 0) + 1
                     except json.JSONDecodeError:
                         pass
-        
+
         return counts
 
     def clear(self) -> None:
@@ -316,12 +331,17 @@ def append(
         path: Path to JSONL file. Defaults to JSONL_PATH
     """
     target = Path(path) if path is not None else JSONL_PATH
+    # Respect DEBUG flag: if DEBUG=0 do not write
+    if os.environ.get("DEBUG", "1") == "0":
+        logger.debug("DEBUG=0 set — skipping module-level append write to %s", target)
+        return
+
     target.parent.mkdir(parents=True, exist_ok=True)
 
     try:
         row = asdict(feature_set)  # type: ignore
     except TypeError:
-        row = {k: v for k, v in feature_set.__dict__.items() if not k.startswith('_')}
+        row = {k: v for k, v in feature_set.__dict__.items() if not k.startswith("_")}
 
     row["source"] = source
     row["schema_version"] = schema_version
@@ -332,14 +352,16 @@ def append(
         f.write(json.dumps(row) + "\n")
 
 
-def load_numpy(path: Path | str | None = None, feature_columns: List[str] | None = None) -> np.ndarray:
+def load_numpy(
+    path: Path | str | None = None, feature_columns: List[str] | None = None
+) -> np.ndarray:
     """
     Load feature vectors from JSONL storage as a 2D numpy array.
-    
+
     Args:
         path: Path to JSONL file. Defaults to JSONL_PATH (data/features.jsonl)
         feature_columns: Column order. If None, uses vector field directly
-    
+
     Returns:
         np.ndarray: Shape (N, N_FEATURES)
     """
@@ -347,11 +369,11 @@ def load_numpy(path: Path | str | None = None, feature_columns: List[str] | None
         path = JSONL_PATH
     else:
         path = Path(path)
-    
+
     if not path.exists():
         n_features = len(feature_columns) if feature_columns else 0
         return np.empty((0, n_features), dtype=float)
-    
+
     vectors = []
     with path.open("r", encoding="utf-8") as f:
         for line in f:
@@ -359,26 +381,31 @@ def load_numpy(path: Path | str | None = None, feature_columns: List[str] | None
                 try:
                     record = json.loads(line)
                     if feature_columns:
-                        vectors.append([record.get("features", {}).get(col, 0.0) for col in feature_columns])
+                        vectors.append(
+                            [
+                                record.get("features", {}).get(col, 0.0)
+                                for col in feature_columns
+                            ]
+                        )
                     else:
                         vectors.append(record.get("vector", []))
                 except (json.JSONDecodeError, KeyError):
                     logger.warning(f"Skipped malformed line in {path}")
-    
+
     if not vectors:
         n_features = len(feature_columns) if feature_columns else 0
         return np.empty((0, n_features), dtype=float)
-    
+
     return np.array(vectors, dtype=float)
 
 
 def record_count(path: Path | str | None = None) -> int:
     """
     Return the number of stored records without loading them into memory.
-    
+
     Args:
         path: Path to JSONL file. Defaults to JSONL_PATH (data/features.jsonl)
-    
+
     Returns:
         int: Number of records
     """
@@ -386,9 +413,9 @@ def record_count(path: Path | str | None = None) -> int:
         path = JSONL_PATH
     else:
         path = Path(path)
-    
+
     if not path.exists():
         return 0
-    
+
     with path.open("r", encoding="utf-8") as f:
         return sum(1 for line in f if line.strip())
