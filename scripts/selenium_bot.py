@@ -82,7 +82,7 @@ signal.signal(signal.SIGINT, _sigint_handler)
 # Configuration
 # ─────────────────────────────────────────────────────────────────────────────
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:7860"
 BATCH_INTERVAL_SEC = 10      # must match setInterval() in tracker.js
 DEFAULT_BATCHES_PER_SESSION = 4  # how many 10s batches to collect per run
 
