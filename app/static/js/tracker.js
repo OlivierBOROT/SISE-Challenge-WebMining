@@ -2,7 +2,9 @@ import { InputTracker } from './modules/inputTracker.js';
 import { EventTracker } from './modules/interactionTracker.js';
 import { drawTrackPlot } from './modules/mouseTrackPlot.js';
 import { drawSpeedPlot } from './modules/mouseSpeedPlot.js';
+import { drawScatterPlot } from './modules/scatterPlot.js';
 import { initUserResult, setClusterResult } from './modules/userResult.js';
+import { setBotResult } from './modules/botResult.js';
 
 const inputTracker = new InputTracker();
 const eventTracker = new EventTracker();
@@ -72,6 +74,9 @@ function trackInputs() {
         timer = analysisInterval;
         updateTimerDisplay();
         const result = await response.json();
+        if (!response.warning) {
+            setBotResult(result.label, result.score);
+        }
     }, analysisInterval * 1000);
 }
 
@@ -101,7 +106,53 @@ function trackEvents() {
             }),
         });
         const result = await response.json();
+        if (!result.warning) {
+            setClusterResult(result.label.toString());
+            document.dispatchEvent(new CustomEvent('behaviourUpdate', {
+                detail: result,
+                bubbles: true,
+                cancelable: false
+            }))
+        }
     }, 1000);
+}
+
+
+async function renderClusters() {
+    const response = await fetch('ajax/projection');
+    const content = await response.json();
+    drawScatterPlot(content.plot);
+    // Reset highlighted cluster display initially
+    try {
+        if (typeof window.highlightCluster === 'function') window.highlightCluster(null);
+    } catch (e) {
+        console.warn('highlightCluster not available', e);
+    }
+    // Display total number of clusters in the stat box
+    try {
+        const scEl = document.getElementById('sc-highlighted');
+        if (scEl) {
+            const total = content.clusters ? Object.keys(content.clusters).length : (window.CLUSTERS ? window.CLUSTERS.length : '—');
+            scEl.textContent = total;
+        }
+    } catch (e) {
+        console.warn('Unable to set total clusters', e);
+    }
+    // Show PCA explained variance and axis labels under the scatter plot
+    if (content.pca) {
+        try {
+            const compPerc = content.pca.explained_by_component || [0,0];
+            window.setScatterVarianceInfo(
+                content.pca.explained_variance || 0,
+                content.pca.x_label || 'Composante 1',
+                content.pca.y_label || 'Composante 2',
+                compPerc
+            );
+        } catch (e) {
+            // function may not be defined in older clients
+            console.warn('setScatterVarianceInfo not available', e);
+        }
+    }
 }
 
 
@@ -109,6 +160,7 @@ function trackEvents() {
 drawTrackPlot();
 drawSpeedPlot();
 initUserResult();
+renderClusters();
 
 // Track user inputs (mouse, clicks, scroll, form)
 trackInputs();

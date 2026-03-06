@@ -12,6 +12,7 @@ from flask import Flask
 from app.services import (
     ProductData,
     UserService,
+    PlotService
 )
 
 
@@ -20,6 +21,7 @@ class AppContext(Flask):
 
     product_data: ProductData
     user_service: UserService
+    plot_service: PlotService
 
 
 def create_app() -> Flask:
@@ -41,6 +43,7 @@ def create_app() -> Flask:
         app.debug = False
         app.product_data = ProductData()  # type: ignore
         app.user_service = UserService()  # type: ignore
+        app.plot_service = PlotService()  # type: ignore
 
     # Init pages routes
     from .routes import main as main_blueprint

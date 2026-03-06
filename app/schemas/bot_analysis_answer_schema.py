@@ -9,3 +9,12 @@ class DetectionResult:
     model_type: str     # which model produced this result
     schema_version: str = "1.0"  # detection output schema version
     feature_version: str = "1.0"  # feature extraction schema version
+
+
+@dataclass
+class ClusteringResult:
+    label: int
+    pc1: float
+    pc2: float
+    schema_version: str = "1.0"  # detection output schema version
+    feature_version: str = "1.0"  # feature extraction schema version

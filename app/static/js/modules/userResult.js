@@ -1,10 +1,9 @@
 // ── Cluster definitions
 const CLUSTERS = [
-    { id: "hysterique", label: "Hystérique", desc: "Mouvements et actions très rapides, clics frénétiques.", color: "#e84545", bg: "#fff5f5", border: "#fca5a5" },
-    { id: "explorateur", label: "Explorateur", desc: "Navigation lente et méthodique, exploration large.", color: "#2563eb", bg: "#eff6ff", border: "#93c5fd" },
-    { id: "precis", label: "Précis", desc: "Trajectoires directes, peu de clics, haute efficacité.", color: "#16a34a", bg: "#f0fdf4", border: "#86efac" },
-    { id: "indecis", label: "Indécis", desc: "Allers-retours fréquents, hésitations marquées.", color: "#d97706", bg: "#fffbeb", border: "#fcd34d" },
-    { id: "passif", label: "Passif", desc: "Très peu de mouvement, longues pauses, faible activité.", color: "#7c3aed", bg: "#f5f3ff", border: "#c4b5fd" },
+    { id: "0", label: "Hystérique", desc: "Mouvements et actions très rapides, clics frénétiques.", color: "#e84545", bg: "#fff5f5", border: "#fca5a5" },
+    { id: "1", label: "Explorateur", desc: "Navigation lente et méthodique, exploration large.", color: "#2563eb", bg: "#eff6ff", border: "#93c5fd" },
+    { id: "2", label: "Passif", desc: "Très peu de mouvement, longues pauses, faible activité.", color: "#16a34a", bg: "#f0fdf4", border: "#86efac" },
+    { id: "3", label: "Curieux", desc: "Interagit avec les produits et ouvre les descriptions.", color: "#d97706", bg: "#fffbeb", border: "#fcd34d" },
 ];
 
 // Render the cluster list on load
@@ -32,8 +31,6 @@ export function initUserResult () {
             moreButton.textContent = "Voir moins";
         }
     })
-
-    setClusterResult("hysterique");
 }
 
 export function setClusterResult(clusterId) {
