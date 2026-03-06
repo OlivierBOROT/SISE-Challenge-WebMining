@@ -12,7 +12,7 @@ def main():
     app = create_app()
     # For now we only print status; run the server in dev to inspect
     # Bind to 0.0.0.0 so the server is reachable from outside the container
-    app.run(debug=True, host="0.0.0.0", port=8000)
+    app.run(debug=True, host="0.0.0.0", port=7860)
 
 
 if __name__ == "__main__":

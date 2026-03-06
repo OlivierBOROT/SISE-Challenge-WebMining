@@ -26,7 +26,7 @@ RUN pip install --no-cache-dir .
 # Copy application code
 COPY . .
 
-EXPOSE 8000
+EXPOSE 7860
 
 # Default command — run the app with Gunicorn using the wsgi entrypoint
 # Use the Python API config file `gunicorn_conf.py` for sensible defaults
