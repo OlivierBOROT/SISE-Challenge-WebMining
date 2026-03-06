@@ -3,7 +3,7 @@ const CLUSTERS = [
     { id: "0", label: "Hystérique", desc: "Mouvements et actions très rapides, clics frénétiques.", color: "#e84545", bg: "#fff5f5", border: "#fca5a5" },
     { id: "1", label: "Explorateur", desc: "Navigation lente et méthodique, exploration large.", color: "#2563eb", bg: "#eff6ff", border: "#93c5fd" },
     { id: "2", label: "Passif", desc: "Très peu de mouvement, longues pauses, faible activité.", color: "#16a34a", bg: "#f0fdf4", border: "#86efac" },
-    { id: "3", label: "Curiueux", desc: "Interagit avec les produits et ouvre les descriptions.", color: "#d97706", bg: "#fffbeb", border: "#fcd34d" },
+    { id: "3", label: "Curieux", desc: "Interagit avec les produits et ouvre les descriptions.", color: "#d97706", bg: "#fffbeb", border: "#fcd34d" },
 ];
 
 // Render the cluster list on load

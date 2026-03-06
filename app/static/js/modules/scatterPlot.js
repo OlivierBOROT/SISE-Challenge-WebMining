@@ -187,16 +187,10 @@ export function drawScatterPlot(initialData = null) {
      * Pass null to reset.
      */
     window.highlightCluster = function (clusterId) {
+        // Set active cluster (used to dim/bright points). Do not update
+        // the `#sc-highlighted` element here — it displays the total number
+        // of clusters and is updated when the projection data is loaded.
         activeCluster = clusterId;
-        const el = document.getElementById("sc-highlighted");
-        el.textContent = clusterId
-            ? (CLUSTERS.find(c => c.id === clusterId)?.label || clusterId)
-            : "—";
-        if (clusterId) {
-            el.style.color = CLUSTER_COLORS[clusterId] || "#232f3e";
-        } else {
-            el.style.color = "#232f3e";
-        }
         render();
     };
 
@@ -283,4 +277,23 @@ export function drawScatterPlot(initialData = null) {
             animatePoint();
         }
     })
+}
+
+window.setScatterVarianceInfo = function(variance, xLabel, yLabel, compPerc) {
+    const el = document.getElementById("scatter-variance");
+    if (!el) return;
+
+    // Format percentages safely
+    const total = (typeof variance === 'number') ? variance.toFixed(1) : "0.0";
+    let left = "";
+    let right = "";
+    if (Array.isArray(compPerc) && compPerc.length >= 2) {
+        left = `${xLabel} : ${Number(compPerc[0]).toFixed(1)}%`;
+        right = `${yLabel} : ${Number(compPerc[1]).toFixed(1)}%`;
+    } else {
+        left = `${xLabel}`;
+        right = `${yLabel}`;
+    }
+
+    el.textContent = `Ce graph représente ${total}% de la variance totale, abscisse/${left}, ordonnée/${right}`;
 }

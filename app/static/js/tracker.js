@@ -122,6 +122,37 @@ async function renderClusters() {
     const response = await fetch('ajax/projection');
     const content = await response.json();
     drawScatterPlot(content.plot);
+    // Reset highlighted cluster display initially
+    try {
+        if (typeof window.highlightCluster === 'function') window.highlightCluster(null);
+    } catch (e) {
+        console.warn('highlightCluster not available', e);
+    }
+    // Display total number of clusters in the stat box
+    try {
+        const scEl = document.getElementById('sc-highlighted');
+        if (scEl) {
+            const total = content.clusters ? Object.keys(content.clusters).length : (window.CLUSTERS ? window.CLUSTERS.length : '—');
+            scEl.textContent = total;
+        }
+    } catch (e) {
+        console.warn('Unable to set total clusters', e);
+    }
+    // Show PCA explained variance and axis labels under the scatter plot
+    if (content.pca) {
+        try {
+            const compPerc = content.pca.explained_by_component || [0,0];
+            window.setScatterVarianceInfo(
+                content.pca.explained_variance || 0,
+                content.pca.x_label || 'Composante 1',
+                content.pca.y_label || 'Composante 2',
+                compPerc
+            );
+        } catch (e) {
+            // function may not be defined in older clients
+            console.warn('setScatterVarianceInfo not available', e);
+        }
+    }
 }
 
 

@@ -400,6 +400,33 @@
     line-height: 1.3;
 }
 
+/* Scatter plot variance info (small text under the canvas) */
+.scatter-variance-info,
+#scatter-variance {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #6b7280; /* neutral grey */
+    text-align: center;
+    line-height: 1.2;
+    /* Allow wrapping so the sentence can break on smaller screens */
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    padding: 0 6px;
+    max-width: 100%;
+    /* Better wrapping behavior for long words */
+    overflow-wrap: anywhere;
+    word-wrap: break-word;
+    word-break: break-word;
+}
+
+@media (max-width: 520px) {
+    .scatter-variance-info,
+    #scatter-variance {
+        font-size: 10px;
+    }
+}
+
 .cluster-option.active .cluster-option-desc {
     color: var(--c-text);
     opacity: 0.7;
