@@ -46,6 +46,7 @@ export class EventTracker {
         this._onCategoryLeave = this._handleCategoryLeave.bind(this);
         this._onCategoryClick = this._handleCategoryClick.bind(this);
         this._onPageClick     = this._handlePageClick.bind(this);
+        this._onProductPageChange = this._handleProductPageChange.bind(this);
         this._onScroll        = this._handleScroll.bind(this);
         this._onWheel         = this._handleWheel.bind(this);
         this._lastScrollPos = 0;
@@ -72,6 +73,7 @@ export class EventTracker {
         document.addEventListener("click", this._onBuyClick);
         document.addEventListener("click", this._onCategoryClick);
         document.addEventListener("click", this._onPageClick);
+        document.addEventListener("productPageChange", this._onProductPageChange);
         document.addEventListener('wheel', this._onWheel, { passive: true });
     }
 
@@ -85,6 +87,7 @@ export class EventTracker {
         document.removeEventListener("click", this._onBuyClick);
         document.removeEventListener("click", this._onCategoryClick);
         document.removeEventListener("click", this._onPageClick);
+        document.removeEventListener("productPageChange", this._onProductPageChange);
         document.removeEventListener('wheel', this._onWheel, { passive: true });
     }
 
@@ -243,6 +246,16 @@ export class EventTracker {
        Handlers — Pagination
        ══════════════════════════════════════════════ */
 
+    _handleProductPageChange(e) {
+        const pageNum = e.detail?.page ?? 1;
+        this.events.push({
+            batch_t:    Date.now() - this.sessionStart,
+            timestamp: this._now(),
+            object: "page",
+            page_num: pageNum,
+        });
+    }
+
     _handlePageClick(e) {
         const btn = e.target.closest?.(".pagination button, .pagination-btn");
         if (!btn) return;
@@ -250,12 +263,8 @@ export class EventTracker {
         const pageNum = parseInt(btn.value, 10);
         if (isNaN(pageNum) || pageNum < 1) return;
 
-        this.events.push({
-            batch_t:    Date.now() - this.sessionStart,
-            timestamp: this._now(),
-            object: "page",
-            page_num: pageNum,
-        });
+        // productPageChange will already fire for this navigation via layout.js
+        // so we skip duplicate emission here
     }
 
     /* ══════════════════════════════════════════════

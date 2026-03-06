@@ -33,6 +33,7 @@ async function renderProducts(category="all", page=1) {
     productsSection.innerHTML = html;
     // expose current product pagination page for trackers
     window.__currentProductPage = Number(page) || 1;
+    document.dispatchEvent(new CustomEvent('productPageChange', { detail: { page: Number(page) || 1 } }));
     // Bind click
     const products = productsSection.querySelectorAll('article');
     products.forEach(product => {
