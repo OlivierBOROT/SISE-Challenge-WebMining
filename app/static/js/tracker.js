@@ -103,7 +103,6 @@ function trackEvents() {
             payload._source = window.__TRACKER_SOURCE__;
         }
 
-<<<<<<< HEAD
         try {
             const response = await fetch('ajax/track_events', {
                 method: 'POST',
@@ -117,29 +116,17 @@ function trackEvents() {
             });
             if (response.ok) {
                 const result = await response.json();
+                if (!result.warning) {
+                    setClusterResult(result.label.toString());
+                    document.dispatchEvent(new CustomEvent('behaviourUpdate', {
+                        detail: result,
+                        bubbles: true,
+                        cancelable: false
+                    }))
+                }
             }
         } catch (err) {
             console.warn('[trackEvents] fetch failed:', err);
-=======
-        const response = await fetch('ajax/track_events', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json' 
-            },
-            body: JSON.stringify({
-                events: payload,
-                session_id: getCookie('session_id')
-            }),
-        });
-        const result = await response.json();
-        if (!result.warning) {
-            setClusterResult(result.label.toString());
-            document.dispatchEvent(new CustomEvent('behaviourUpdate', {
-                detail: result,
-                bubbles: true,
-                cancelable: false
-            }))
->>>>>>> origin/main
         }
     }, 1000);
 }
