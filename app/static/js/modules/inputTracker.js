@@ -165,10 +165,17 @@ export class InputTracker {
     }
 
     _handleWheel(e) {
-        const pos = window.scrollY || 0;
-        const maxScroll = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1);
-        const scrollPos = Math.min(1, Math.max(0, pos / maxScroll));
-        this.scrolls.push({ dy: e.deltaY, t: performance.now(), pos: scrollPos });
+        // Capture dy and timestamp immediately (before the event is stale),
+        // but defer reading scrollY to a rAF so the browser has actually
+        // scrolled the page — otherwise scrollY is still 0 for real human input.
+        const dy = e.deltaY;
+        const t = performance.now();
+        requestAnimationFrame(() => {
+            const pos = window.scrollY || 0;
+            const maxScroll = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1);
+            const scrollPos = Math.min(1, Math.max(0, pos / maxScroll));
+            this.scrolls.push({ dy, t, pos: scrollPos });
+        });
     }
 
     _handleFocusIn(e) {
